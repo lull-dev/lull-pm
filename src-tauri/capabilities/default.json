@@ -1,0 +1,26 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Filesystem access to the chosen vault, a folder picker, and obsidian:// links.",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"dialog:allow-open",
+		"fs:allow-read-text-file",
+		"fs:allow-write-text-file",
+		"fs:allow-read-dir",
+		"fs:allow-mkdir",
+		"fs:allow-exists",
+		"fs:allow-stat",
+		"fs:allow-watch",
+		"fs:allow-unwatch",
+		{
+			"identifier": "opener:allow-open-url",
+			"allow": [
+				{
+					"url": "obsidian://*"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,45 @@
+use tauri_plugin_fs::FsExt;
+
+/// Grant the frontend filesystem access to one vault folder, and only that folder.
+///
+/// The vault is chosen at runtime, so it cannot appear in the static capability scope. Instead the
+/// frontend calls this immediately after the user picks a folder, and the fs plugin's scope is
+/// widened to exactly that directory. Everything outside it stays unreachable, which is the point:
+/// a bug in path handling on the JS side cannot reach the rest of the disk, because the Rust side
+/// never allowed it in the first place.
+#[tauri::command]
+fn allow_vault(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let vault = std::path::PathBuf::from(&path);
+
+    if !vault.is_dir() {
+        return Err(format!("{path} is not a folder"));
+    }
+
+    let scope = app.fs_scope();
+    scope
+        .allow_directory(&vault, true)
+        .map_err(|e| format!("Could not grant access to {path}: {e}"))?;
+
+    Ok(())
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![allow_vault])
+        .setup(|app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
