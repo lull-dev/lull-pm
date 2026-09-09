@@ -5,13 +5,22 @@
 	 */
 	import { vaultManager, vaultState } from '$lib/managers/VaultManager.svelte';
 	import { isTauri } from '$lib/vault/adapter.tauri';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	let { children } = $props();
 	let restoring = $state(true);
+	/** Lets a mobile visitor opt into the sample-data UI instead of the "go open your files" screen. */
+	let showDemoAnyway = $state(false);
+
+	const isMobile = new IsMobile();
+	// A phone browser has no filesystem to reach at all — not even the folder picker Tauri gets —
+	// so it gets pointed at the notes directly rather than offered a picker that can only fake it.
+	const mobileWeb = $derived(isMobile.current && !isTauri());
 
 	$effect(() => {
 		vaultManager.restore().finally(() => (restoring = false));
@@ -21,6 +30,34 @@
 {#if restoring || vaultState.status === 'opening'}
 	<div class="flex h-screen items-center justify-center">
 		<Spinner class="size-6 text-muted-foreground" />
+	</div>
+{:else if mobileWeb && !showDemoAnyway}
+	<div class="flex h-screen items-center justify-center p-8">
+		<div class="max-w-sm text-center">
+			<h1 class="text-2xl font-medium">Open your notes directly</h1>
+			<p class="mt-3 text-sm text-muted-foreground">
+				lull-pm reads and writes files on disk, which a phone browser has no way to reach. On
+				mobile, skip this app and go straight to the vault folder where your notes already live —
+				every task and project here is just a markdown file.
+			</p>
+
+			<div class="mt-6 flex flex-col items-center gap-3">
+				<Button href="obsidian://">
+					<ExternalLinkIcon class="size-4" />
+					Open in Obsidian
+				</Button>
+				<p class="text-xs text-muted-foreground">
+					Or browse to the vault folder in your Files app.
+				</p>
+				<button
+					type="button"
+					class="mt-2 text-xs text-muted-foreground underline underline-offset-2"
+					onclick={() => (showDemoAnyway = true)}
+				>
+					See the UI on sample data instead
+				</button>
+			</div>
+		</div>
 	</div>
 {:else if vaultState.status === 'ready'}
 	{@render children()}

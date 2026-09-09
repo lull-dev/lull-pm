@@ -1,19 +1,32 @@
 <script lang="ts">
+	import { flip } from 'svelte/animate';
+	import {
+		dndzone,
+		overrideItemIdKeyNameBeforeInitialisingDndZones,
+		type DndEvent
+	} from 'svelte-dnd-action';
 	import { priorityRank, type Task, type TaskStatus } from '$lib/models/Task';
 	import TaskCard from './TaskCard.svelte';
+
+	// Tasks are identified by vault path, not an `id` field — tell the library once, before any
+	// dndzone mounts, rather than wrapping every card in a synthetic { id, task } pair.
+	overrideItemIdKeyNameBeforeInitialisingDndZones('path');
 
 	interface Props {
 		tasks: Task[];
 		onselect: (task: Task) => void;
+		onstatuschange: (path: string, status: TaskStatus) => void;
 	}
 
-	let { tasks, onselect }: Props = $props();
+	let { tasks, onselect, onstatuschange }: Props = $props();
 
 	/** Matches `Tasks.base`'s Board view: everything but Archived, grouped by status. */
-	const COLUMNS: TaskStatus[] = ['Todo', 'In Progress', 'Blocked', 'Done'];
+	type BoardStatus = Exclude<TaskStatus, 'Archived'>;
+	const COLUMNS: BoardStatus[] = ['Todo', 'In Progress', 'Blocked', 'Done'];
+	const FLIP_DURATION_MS = 180;
 
-	function sortTasks(tasks: Task[]): Task[] {
-		return [...tasks].sort((a, b) => {
+	function sortTasks(list: Task[]): Task[] {
+		return [...list].sort((a, b) => {
 			const rank = priorityRank(a.priority) - priorityRank(b.priority);
 			if (rank !== 0) return rank;
 			if (a.due && b.due) return a.due.localeCompare(b.due);
@@ -23,28 +36,75 @@
 		});
 	}
 
-	const columns = $derived(
-		COLUMNS.map((status) => ({
-			status,
-			tasks: sortTasks(tasks.filter((task) => task.status === status))
-		}))
-	);
+	function emptyColumns(): Record<BoardStatus, Task[]> {
+		return { Todo: [], 'In Progress': [], Blocked: [], Done: [] };
+	}
+
+	/**
+	 * svelte-dnd-action owns these arrays during a drag — it patches them directly via `consider`
+	 * so the dragged card can preview its new position before anything is written to the vault.
+	 * `dragging` stops an incoming prop update (e.g. a background vault refresh) from clobbering
+	 * that in-progress drag.
+	 */
+	let columns = $state<Record<BoardStatus, Task[]>>(emptyColumns());
+	let dragging = false;
+
+	$effect(() => {
+		if (dragging) return;
+		const next = emptyColumns();
+		for (const status of COLUMNS)
+			next[status] = sortTasks(tasks.filter((t) => t.status === status));
+		columns = next;
+	});
+
+	function consider(status: BoardStatus, e: CustomEvent<DndEvent<Task>>) {
+		dragging = true;
+		columns[status] = e.detail.items;
+	}
+
+	/**
+	 * A card belongs wherever its own `status` says it does — every other task already dropped into
+	 * this zone matches it by construction, so the one that doesn't is the one that just moved here.
+	 * That holds for a same-zone reorder too: nothing there has a mismatched status, so it is
+	 * correctly treated as a no-op rather than a write.
+	 */
+	function finalize(status: BoardStatus, e: CustomEvent<DndEvent<Task>>) {
+		dragging = false;
+		columns[status] = e.detail.items;
+
+		const moved = e.detail.items.find((task) => task.status !== status);
+		if (moved) onstatuschange(moved.path, status);
+	}
 </script>
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-	{#each columns as column (column.status)}
+	{#each COLUMNS as status (status)}
 		<section class="flex min-w-0 flex-col gap-2">
 			<h2
 				class="flex items-center gap-2 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 			>
-				{column.status}
-				<span class="text-muted-foreground/60">{column.tasks.length}</span>
+				{status}
+				<span class="text-muted-foreground/60">{columns[status].length}</span>
 			</h2>
-			<div class="flex flex-col gap-2">
-				{#each column.tasks as task (task.path)}
-					<TaskCard {task} onclick={() => onselect(task)} />
+			<div
+				class="flex min-h-16 flex-col gap-2 rounded-lg"
+				use:dndzone={{
+					items: columns[status],
+					flipDurationMs: FLIP_DURATION_MS,
+					// A short hold before a touch drag starts, so a finger scrolling the page past the
+					// board doesn't get mistaken for the start of a drag.
+					delayTouchStart: true,
+					dropTargetClasses: ['outline-2', 'outline-dashed', 'outline-primary/40', 'rounded-lg']
+				}}
+				onconsider={(e) => consider(status, e)}
+				onfinalize={(e) => finalize(status, e)}
+			>
+				{#each columns[status] as task (task.path)}
+					<div animate:flip={{ duration: FLIP_DURATION_MS }}>
+						<TaskCard {task} onclick={() => onselect(task)} />
+					</div>
 				{/each}
-				{#if column.tasks.length === 0}
+				{#if columns[status].length === 0}
 					<p class="px-1 text-xs text-muted-foreground/60">No tasks</p>
 				{/if}
 			</div>

@@ -72,7 +72,7 @@
 			</Button>
 		</div>
 	{:else}
-		<TaskBoard tasks={taskState.tasks} onselect={openTask} />
+		<TaskBoard tasks={taskState.tasks} onselect={openTask} onstatuschange={taskManager.setStatus} />
 	{/if}
 </main>
 

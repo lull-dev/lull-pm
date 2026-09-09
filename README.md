@@ -8,10 +8,9 @@ work vs. personal, one org vs. another) is not a new note type: it's the `org:` 
 task and project note in the vault already carries, and every `.base` file already filters on. There
 is no database, no sync engine and no account — the vault is the data.
 
-This is the sibling of [lull-obsidian-app](../lull-obsidian-app), which does the same thing for
-Habits. lull-pm forked its vault-access layer (`src/lib/vault/`) at the start and has diverged from
-there — the two apps do not share code going forward, only the markdown conventions of the vault
-itself.
+Nothing here is invented: the note schema comes straight from the vault's own `Templates/Task
+Template.md`, `Templates/Project Template.md` and their `.base` query files, so lull-pm reads and
+writes notes the vault already understands.
 
 ## The rule everything else follows
 
@@ -40,15 +39,21 @@ frontmatter does not parse, which lull-pm will refuse to write.
 
 ## Status
 
-Working: the vault access layer and the markdown core (forked from lull-obsidian-app).
-
 - [x] Vault adapter — Tauri filesystem, in-memory for tests, safe read/modify/write
 - [x] Frontmatter, wikilinks, checkboxes, sections
-- [ ] Tasks — `Tasks/` notes, status board
+- [x] Tasks — `Tasks/` notes, drag-and-drop status board
 - [ ] Projects — `Projects/` notes, per-project task list
 - [ ] Buckets — `org:` as a first-class filter across Tasks and Projects
 - [ ] Inbox — `_Inbox Notes/`, promote-to-task
 - [ ] Goals — `Goals/` folder
+
+## Mobile
+
+lull-pm reads and writes real files on disk, which a phone browser has no way to reach — there is no
+filesystem picker to fall back to the way Tauri's dialog is on desktop. Rather than fake it, the
+mobile web view skips straight to pointing you at the notes themselves: open the vault in the
+Obsidian app, or browse to the folder in your phone's Files app. Every task and project here is just
+a markdown file, so nothing lull-pm does is unavailable there.
 
 ## Data model
 

@@ -23,6 +23,7 @@
 		"@tauri-apps/plugin-dialog": "^2.4.0",
 		"@tauri-apps/plugin-fs": "^2.4.4",
 		"@tauri-apps/plugin-opener": "^2.5.0",
+		"svelte-dnd-action": "^0.9.79",
 		"yaml": "^2.8.1"
 	},
 	"devDependencies": {
