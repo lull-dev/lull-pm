@@ -5,7 +5,7 @@
 		overrideItemIdKeyNameBeforeInitialisingDndZones,
 		type DndEvent
 	} from 'svelte-dnd-action';
-	import { priorityRank, type Task, type TaskStatus } from '$lib/models/Task';
+	import { priorityRank, TASK_STATUSES, type Task, type TaskStatus } from '$lib/models/Task';
 	import TaskCard from './TaskCard.svelte';
 
 	// Tasks are identified by vault path, not an `id` field — tell the library once, before any
@@ -20,9 +20,7 @@
 
 	let { tasks, onselect, onstatuschange }: Props = $props();
 
-	/** Matches `Tasks.base`'s Board view: everything but Archived, grouped by status. */
-	type BoardStatus = Exclude<TaskStatus, 'Archived'>;
-	const COLUMNS: BoardStatus[] = ['Todo', 'In Progress', 'Blocked', 'Done'];
+	const COLUMNS = TASK_STATUSES;
 	const FLIP_DURATION_MS = 180;
 
 	function sortTasks(list: Task[]): Task[] {
@@ -36,8 +34,8 @@
 		});
 	}
 
-	function emptyColumns(): Record<BoardStatus, Task[]> {
-		return { Todo: [], 'In Progress': [], Blocked: [], Done: [] };
+	function emptyColumns(): Record<TaskStatus, Task[]> {
+		return { Inbox: [], Whenever: [], Unstarted: [], 'In Progress': [], Done: [] };
 	}
 
 	/**
@@ -46,7 +44,7 @@
 	 * `dragging` stops an incoming prop update (e.g. a background vault refresh) from clobbering
 	 * that in-progress drag.
 	 */
-	let columns = $state<Record<BoardStatus, Task[]>>(emptyColumns());
+	let columns = $state<Record<TaskStatus, Task[]>>(emptyColumns());
 	let dragging = false;
 
 	$effect(() => {
@@ -57,7 +55,7 @@
 		columns = next;
 	});
 
-	function consider(status: BoardStatus, e: CustomEvent<DndEvent<Task>>) {
+	function consider(status: TaskStatus, e: CustomEvent<DndEvent<Task>>) {
 		dragging = true;
 		columns[status] = e.detail.items;
 	}
@@ -68,7 +66,7 @@
 	 * That holds for a same-zone reorder too: nothing there has a mismatched status, so it is
 	 * correctly treated as a no-op rather than a write.
 	 */
-	function finalize(status: BoardStatus, e: CustomEvent<DndEvent<Task>>) {
+	function finalize(status: TaskStatus, e: CustomEvent<DndEvent<Task>>) {
 		dragging = false;
 		columns[status] = e.detail.items;
 
@@ -77,7 +75,7 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 	{#each COLUMNS as status (status)}
 		<section class="flex min-w-0 flex-col gap-2">
 			<h2

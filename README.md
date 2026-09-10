@@ -42,10 +42,21 @@ frontmatter does not parse, which lull-pm will refuse to write.
 - [x] Vault adapter — Tauri filesystem, in-memory for tests, safe read/modify/write
 - [x] Frontmatter, wikilinks, checkboxes, sections
 - [x] Tasks — `Tasks/` notes, drag-and-drop status board
-- [ ] Projects — `Projects/` notes, per-project task list
-- [ ] Buckets — `org:` as a first-class filter across Tasks and Projects
-- [ ] Inbox — `_Inbox Notes/`, promote-to-task
+- [x] Projects — `Projects/` notes, per-project task list
+- [x] Buckets — `org:` as a first-class filter across Tasks and Projects
+- [x] Inbox — the Inbox status, surfaced as its own page for triage
 - [ ] Goals — `Goals/` folder
+
+## Task status
+
+A task moves through five states: **Inbox** (just captured — no `due` and no `do` date yet),
+**Whenever** (triaged, deliberately dateless), **Unstarted** (has a plan but hasn't begun), **In
+Progress**, and **Done**. Inbox is the default for a new task, precisely because it starts without
+either date — triaging it means giving it a date and moving it to Unstarted, or deciding it doesn't
+need one and sending it to Whenever.
+
+`due` is the deadline; `do` is a separate property for the date you actually plan to work it. Neither
+implies the other.
 
 ## Mobile
 
@@ -57,13 +68,15 @@ a markdown file, so nothing lull-pm does is unavailable there.
 
 ## Data model
 
-| Note type | Folder      | Key frontmatter                                        |
-| --------- | ----------- | ------------------------------------------------------ |
-| Task      | `Tasks/`    | `status`, `priority`, `org`, `projects`, `due`, `done` |
-| Project   | `Projects/` | `org`, `clients`, `status`, `start`, `end`             |
+| Note type | Folder      | Key frontmatter                                              |
+| --------- | ----------- | ------------------------------------------------------------ |
+| Task      | `Tasks/`    | `status`, `priority`, `org`, `projects`, `due`, `do`, `done` |
+| Project   | `Projects/` | `org`, `clients`, `status`, `start`, `end`                   |
 
-Both schemas are taken directly from the real vault's `Templates/Task Template.md`,
-`Templates/Project Template.md` and their `.base` query files — not invented here.
+The `org` property is what the UI calls a Bucket — no separate note type, just a filter over whatever
+values already show up there. `due` and `do` are the only frontmatter this session added beyond what
+the real vault's `Templates/Task Template.md`, `Templates/Project Template.md` and their `.base` query
+files already expected.
 
 ## Development
 

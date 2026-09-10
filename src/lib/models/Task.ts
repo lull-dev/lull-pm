@@ -3,11 +3,11 @@ import type { Checkbox } from '$lib/vault/checkbox';
 /**
  * A task is a note in `Tasks/`.
  *
- * The schema is not invented here — it is exactly what `Templates/Task Template.md` and
- * `Templates/Bases/Tasks.base` already expect in the real vault, so lull-pm reads and writes notes
- * that vault already understands.
+ * `Inbox` is where a task starts: captured, but with no `due` or `do` date yet, so nothing has
+ * decided when it happens. Triaging a task means giving it one of those dates and moving it to
+ * `Whenever` (no particular date needed) or `Unstarted` (scheduled, just not begun).
  */
-export const TASK_STATUSES = ['Todo', 'In Progress', 'Blocked', 'Done', 'Archived'] as const;
+export const TASK_STATUSES = ['Inbox', 'Whenever', 'Unstarted', 'In Progress', 'Done'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const TASK_PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'] as const;
@@ -24,8 +24,10 @@ export interface Task {
 	org: string[];
 	/** Project(s) this task belongs to, as wikilink names. */
 	projects: string[];
-	/** `YYYY-MM-DD`, or null when unset. */
+	/** The deadline, `YYYY-MM-DD`, or null when unset. */
 	due: string | null;
+	/** The date this is planned to be worked, `YYYY-MM-DD`, or null when unset. */
+	doDate: string | null;
 	/** `YYYY-MM-DD`, or null when unset. */
 	created: string | null;
 	/** `YYYY-MM-DD` the task was marked done, or null. */
@@ -52,10 +54,16 @@ export function priorityRank(priority: TaskPriority): number {
 	}
 }
 
+/** True while a task has neither a deadline nor a planned date — the reason it belongs in Inbox. */
+export function isUntriaged(task: Task): boolean {
+	return task.due === null && task.doDate === null;
+}
+
 /**
- * The urgency flag `Tasks.base` shows: done, overdue, due soon, or nothing.
+ * The urgency flag the board shows: done, overdue, due soon, or nothing.
  *
- * Mirrors the base's `formula.flag`: overdue if the due date has passed, "soon" inside three days.
+ * Overdue and "soon" are judged against the deadline; a task with no deadline never flags this way,
+ * even if it has a planned `doDate` in the past — that date is a plan, not a promise.
  */
 export type TaskFlag = 'done' | 'overdue' | 'soon' | null;
 

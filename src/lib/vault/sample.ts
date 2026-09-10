@@ -3,7 +3,8 @@
  *
  * It mirrors the shape of a real vault — Obsidian config, task/project templates, and a handful of
  * notes across a couple of "orgs" (the `org:` property lull-pm treats as a Bucket) — so `npm run dev`
- * exercises the same code paths the desktop build does.
+ * exercises the same code paths the desktop build does. One task sits in each status, so every board
+ * column and the Inbox page have something to show.
  */
 
 import { MemoryVaultAdapter } from './adapter.memory';
@@ -11,11 +12,12 @@ import { MemoryVaultAdapter } from './adapter.memory';
 const TASK_TEMPLATE = `---
 categories:
   - "[[Tasks]]"
-status: Todo
+status: Inbox
 priority: Medium
 org:
 projects:
 due:
+do:
 created: <% tp.date.now("YYYY-MM-DD") %>
 date: "[[<% tp.date.now('YYYY-MM-DD') %>]]"
 done:
@@ -94,6 +96,7 @@ org:
 projects:
   - "[[Marketing Website]]"
 due: 2026-08-10
+do: 2026-08-08
 created: 2026-08-05
 date: "[[2026-08-05]]"
 done: 2026-08-09
@@ -119,6 +122,7 @@ org:
 projects:
   - "[[lull.app]]"
 due:
+do: 2026-09-01
 created: 2026-09-01
 date: "[[2026-09-01]]"
 done:
@@ -135,14 +139,62 @@ Need something to look at before wiring up real data.
 ## Notes
 `,
 
-			'Tasks/Buy groceries.md': `---
+			'Tasks/Draft the quarterly report.md': `---
 categories:
   - "[[Tasks]]"
-status: Todo
+status: Unstarted
+priority: Medium
+org:
+  - "[[lull]]"
+projects:
+due: 2026-09-20
+do: 2026-09-18
+created: 2026-09-05
+date: "[[2026-09-05]]"
+done:
+---
+
+## Why
+Leadership wants numbers before the next planning cycle.
+
+## Steps
+-  [ ]
+
+## Notes
+`,
+
+			'Tasks/Read Deep Work.md': `---
+categories:
+  - "[[Tasks]]"
+status: Whenever
 priority: Low
 org:
 projects:
 due:
+do:
+created: 2026-08-20
+date: "[[2026-08-20]]"
+done:
+---
+
+## Why
+No rush, just want to get to it eventually.
+
+## Steps
+-  [ ]
+
+## Notes
+`,
+
+			'Tasks/Buy groceries.md': `---
+categories:
+  - "[[Tasks]]"
+status: Inbox
+priority: Low
+org:
+projects:
+due:
+do:
 created: 2026-09-05
 date: "[[2026-09-05]]"
 done:

@@ -2,15 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryVaultAdapter } from '$lib/vault/adapter.memory';
 import { TaskService } from './TaskService';
 
-/** Copied verbatim from the real vault's Templates/Task Template.md. */
+/** Copied verbatim from the real vault's Templates/Task Template.md, plus the new `do:` property. */
 const TEMPLATE = `---
 categories:
   - "[[Tasks]]"
-status: Todo
+status: Inbox
 priority: Medium
 org:
 projects:
 due:
+do:
 created: <% tp.date.now("YYYY-MM-DD") %>
 date: "[[<% tp.date.now('YYYY-MM-DD') %>]]"
 done:
@@ -27,17 +28,18 @@ done:
 ## Notes
 `;
 
-/** Copied verbatim from a real task note in the vault. */
+/** Copied verbatim from a real task note in the vault, with `status: Todo` renamed to `Unstarted`. */
 const REAL_TASK = `---
 categories:
   - "[[Tasks]]"
-status: Todo
+status: Unstarted
 priority: High
 org:
   - "[[Student Events]]"
 projects:
   - "[[Marketing-Website student events]]"
 due:
+do: 2026-08-18
 created: 2026-08-14
 date: "[[2026-08-14]]"
 done:
@@ -81,10 +83,12 @@ describe('reading', () => {
 		const task = await service.readTask('Tasks/Convert ASE Marketing Website to Figma.md');
 
 		expect(task.name).toBe('Convert ASE Marketing Website to Figma');
-		expect(task.status).toBe('Todo');
+		expect(task.status).toBe('Unstarted');
 		expect(task.priority).toBe('High');
 		expect(task.org).toEqual(['Student Events']);
 		expect(task.projects).toEqual(['Marketing-Website student events']);
+		expect(task.due).toBeNull();
+		expect(task.doDate).toBe('2026-08-18');
 		expect(task.why).toContain('Silke can give feedback');
 		expect(task.notes).toContain('All TODOs');
 		expect(task.steps).toHaveLength(4);
@@ -101,8 +105,14 @@ describe('reading', () => {
 	it('defaults status and priority for a note missing them', async () => {
 		await adapter.write('Tasks/Bare.md', '---\ncreated: 2026-01-01\n---\n');
 		const task = await service.readTask('Tasks/Bare.md');
-		expect(task.status).toBe('Todo');
+		expect(task.status).toBe('Inbox');
 		expect(task.priority).toBe('Medium');
+	});
+
+	it('falls back to Inbox for a status the vault no longer uses', async () => {
+		await adapter.write('Tasks/Legacy.md', '---\nstatus: Blocked\n---\n');
+		const task = await service.readTask('Tasks/Legacy.md');
+		expect(task.status).toBe('Inbox');
 	});
 });
 
@@ -112,22 +122,26 @@ describe('creating', () => {
 		const task = await service.createTask('Ship the task board', { today });
 
 		expect(task.path).toBe('Tasks/Ship the task board.md');
-		expect(task.status).toBe('Todo');
+		expect(task.status).toBe('Inbox');
 		expect(task.priority).toBe('Medium');
 		expect(task.created).toBe('2026-09-08');
 	});
 
-	it('applies the given priority, org and projects on creation', async () => {
+	it('applies the given priority, org, projects, due and do date on creation', async () => {
 		const task = await service.createTask('Prioritised task', {
 			priority: 'Urgent',
 			org: ['lull'],
 			projects: ['lull.app'],
+			due: '2026-09-20',
+			doDate: '2026-09-18',
 			today: new Date('2026-09-08T12:00:00')
 		});
 
 		expect(task.priority).toBe('Urgent');
 		expect(task.org).toEqual(['lull']);
 		expect(task.projects).toEqual(['lull.app']);
+		expect(task.due).toBe('2026-09-20');
+		expect(task.doDate).toBe('2026-09-18');
 	});
 
 	it('refuses to overwrite an existing task', async () => {
@@ -150,7 +164,7 @@ describe('status', () => {
 	it('does not overwrite an existing done date', async () => {
 		await adapter.write(
 			path,
-			REAL_TASK.replace('status: Todo', 'status: In Progress').replace(
+			REAL_TASK.replace('status: Unstarted', 'status: In Progress').replace(
 				'done:\n',
 				'done: 2026-08-20\n'
 			)
@@ -170,6 +184,27 @@ describe('status', () => {
 		const before = await adapter.read(path);
 		await service.setPriority(path, 'High'); // already High — should be a no-op
 		expect(await adapter.read(path)).toBe(before);
+	});
+});
+
+describe('dates', () => {
+	const path = 'Tasks/Convert ASE Marketing Website to Figma.md';
+
+	it('sets the do date independently of due', async () => {
+		const task = await service.setDoDate(path, '2026-08-25');
+		expect(task.doDate).toBe('2026-08-25');
+		expect(task.due).toBeNull();
+	});
+
+	it('sets due independently of do date', async () => {
+		const task = await service.setDue(path, '2026-09-01');
+		expect(task.due).toBe('2026-09-01');
+		expect(task.doDate).toBe('2026-08-18');
+	});
+
+	it('clears a date back to unset', async () => {
+		const task = await service.setDoDate(path, null);
+		expect(task.doDate).toBeNull();
 	});
 });
 
@@ -198,7 +233,7 @@ describe('steps', () => {
 	});
 
 	it('creates a Steps section when the note has none', async () => {
-		await adapter.write('Tasks/No Steps.md', '---\nstatus: Todo\n---\n\n## Why\nBecause.\n');
+		await adapter.write('Tasks/No Steps.md', '---\nstatus: Inbox\n---\n\n## Why\nBecause.\n');
 		const task = await service.addStep('Tasks/No Steps.md', 'First step');
 		expect(task.steps).toHaveLength(1);
 		expect(task.steps[0].text).toBe('First step');
@@ -216,7 +251,7 @@ describe('body sections', () => {
 	});
 
 	it('creates a Notes section when the note has none', async () => {
-		await adapter.write('Tasks/No Notes.md', '---\nstatus: Todo\n---\n\n## Why\nBecause.\n');
+		await adapter.write('Tasks/No Notes.md', '---\nstatus: Inbox\n---\n\n## Why\nBecause.\n');
 		const task = await service.setNotes('Tasks/No Notes.md', 'Some context.');
 		expect(task.notes).toBe('Some context.');
 	});

@@ -46,6 +46,7 @@ export interface CreateTaskOptions {
 	org?: string[];
 	projects?: string[];
 	due?: string;
+	doDate?: string;
 	today?: Date;
 }
 
@@ -105,6 +106,7 @@ export class TaskService {
 		if (options.org) edits.org = options.org.map((name) => formatWikilink(name));
 		if (options.projects) edits.projects = options.projects.map((name) => formatWikilink(name));
 		if (options.due) edits.due = options.due;
+		if (options.doDate) edits.do = options.doDate;
 		if (Object.keys(edits).length > 0) content = setFrontmatterValues(content, edits);
 
 		await createNote(this.adapter, path, content);
@@ -149,6 +151,11 @@ export class TaskService {
 
 	async setDue(path: string, due: string | null): Promise<Task> {
 		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'due', due));
+		return this.readTask(path);
+	}
+
+	async setDoDate(path: string, doDate: string | null): Promise<Task> {
+		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'do', doDate));
 		return this.readTask(path);
 	}
 
@@ -242,6 +249,7 @@ function toTask(path: string, raw: string): Task {
 		org: getStringList(note, 'org').map((value) => asWikilink(value).name),
 		projects: getStringList(note, 'projects').map((value) => asWikilink(value).name),
 		due: getString(note, 'due') ?? null,
+		doDate: getString(note, 'do') ?? null,
 		created: getString(note, 'created') ?? null,
 		done: getString(note, 'done') ?? null,
 		why: sectionText(raw, 'Why'),
@@ -265,7 +273,7 @@ function sectionText(raw: string, title: string): string {
 function asStatus(value: string | undefined): TaskStatus {
 	return (TASK_STATUSES as readonly string[]).includes(value ?? '')
 		? (value as TaskStatus)
-		: 'Todo';
+		: 'Inbox';
 }
 
 function asPriority(value: string | undefined): TaskPriority {
@@ -280,11 +288,12 @@ function blankTask(today: Date): string {
 		'---\n' +
 		'categories:\n' +
 		'  - "[[Tasks]]"\n' +
-		'status: Todo\n' +
+		'status: Inbox\n' +
 		'priority: Medium\n' +
 		'org:\n' +
 		'projects:\n' +
 		'due:\n' +
+		'do:\n' +
 		`created: ${created}\n` +
 		`date: "[[${created}]]"\n` +
 		'done:\n' +

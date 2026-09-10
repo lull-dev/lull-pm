@@ -94,6 +94,10 @@ export const taskManager = {
 		return mutate(path, (service) => service.setDue(path, due));
 	},
 
+	setDoDate(path: string, doDate: string | null): Promise<void> {
+		return mutate(path, (service) => service.setDoDate(path, doDate));
+	},
+
 	setOrg(path: string, org: string[]): Promise<void> {
 		return mutate(path, (service) => service.setOrg(path, org));
 	},

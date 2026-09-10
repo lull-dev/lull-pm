@@ -22,18 +22,22 @@
 	import { page } from '$app/state';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import { taskManager } from '$lib/managers/TaskManager.svelte';
+	import { projectManager } from '$lib/managers/ProjectManager.svelte';
 
 	let { children } = $props();
 
-	// A closed or switched vault must not leave the previous one's tasks on screen.
+	// A closed or switched vault must not leave the previous one's tasks and projects on screen.
 	$effect(() => {
-		if (vaultState.status !== 'ready') taskManager.reset();
+		if (vaultState.status !== 'ready') {
+			taskManager.reset();
+			projectManager.reset();
+		}
 	});
 
 	const links = [
 		{ href: '/tasks', label: 'Tasks', icon: ListChecksIcon, ready: true },
-		{ href: '/projects', label: 'Projects', icon: FolderIcon, ready: false },
-		{ href: '/inbox', label: 'Inbox', icon: InboxIcon, ready: false },
+		{ href: '/projects', label: 'Projects', icon: FolderIcon, ready: true },
+		{ href: '/inbox', label: 'Inbox', icon: InboxIcon, ready: true },
 		{ href: '/goals', label: 'Goals', icon: TargetIcon, ready: false }
 	];
 </script>

@@ -106,15 +106,33 @@
 					</div>
 				</div>
 
-				<div>
-					<label class="mb-1 block text-xs text-muted-foreground" for="task-due">Due</label>
-					<Input
-						id="task-due"
-						type="date"
-						value={task.due ?? ''}
-						onchange={(e) =>
-							taskManager.setDue(currentPath, (e.currentTarget as HTMLInputElement).value || null)}
-					/>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="mb-1 block text-xs text-muted-foreground" for="task-do">Do date</label>
+						<Input
+							id="task-do"
+							type="date"
+							value={task.doDate ?? ''}
+							onchange={(e) =>
+								taskManager.setDoDate(
+									currentPath,
+									(e.currentTarget as HTMLInputElement).value || null
+								)}
+						/>
+					</div>
+					<div>
+						<label class="mb-1 block text-xs text-muted-foreground" for="task-due">Due</label>
+						<Input
+							id="task-due"
+							type="date"
+							value={task.due ?? ''}
+							onchange={(e) =>
+								taskManager.setDue(
+									currentPath,
+									(e.currentTarget as HTMLInputElement).value || null
+								)}
+						/>
+					</div>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3">

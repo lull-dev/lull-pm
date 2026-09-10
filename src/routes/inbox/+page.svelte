@@ -1,33 +1,22 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
-	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
-	import TaskBoard from '$lib/components/tasks/TaskBoard.svelte';
+	import TaskCard from '$lib/components/tasks/TaskCard.svelte';
 	import NewTaskDialog from '$lib/components/tasks/NewTaskDialog.svelte';
 	import TaskDetailSheet from '$lib/components/tasks/TaskDetailSheet.svelte';
-	import BucketFilter from '$lib/components/buckets/BucketFilter.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import type { Task } from '$lib/models/Task';
-	import { bucketsFrom } from '$lib/models/Bucket';
 
 	let newTaskOpen = $state(false);
 	let detailOpen = $state(false);
 	let selectedPath = $state<string | null>(null);
-	let selectedBucket = $state<string | null>(null);
 
 	$effect(() => {
 		if (vaultState.status === 'ready' && taskState.tasks.length === 0 && !taskState.isLoading) {
 			void taskManager.load();
-		}
-		if (
-			vaultState.status === 'ready' &&
-			projectState.projects.length === 0 &&
-			!projectState.isLoading
-		) {
-			void projectManager.load();
 		}
 	});
 
@@ -36,21 +25,16 @@
 		const adapter = vaultState.adapter;
 		if (!adapter) return;
 
-		let disposeTasks: (() => void) | undefined;
-		let disposeProjects: (() => void) | undefined;
-		void adapter.watch(() => taskManager.refreshQuietly()).then((fn) => (disposeTasks = fn));
-		void adapter.watch(() => projectManager.refreshQuietly()).then((fn) => (disposeProjects = fn));
-		return () => {
-			disposeTasks?.();
-			disposeProjects?.();
-		};
+		let dispose: (() => void) | undefined;
+		void adapter.watch(() => taskManager.refreshQuietly()).then((fn) => (dispose = fn));
+		return () => dispose?.();
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks, projectState.projects));
-	const visibleTasks = $derived(
-		selectedBucket === null
-			? taskState.tasks
-			: taskState.tasks.filter((task) => task.org.includes(selectedBucket!))
+	// Most recently captured first, so triage works through what just landed here.
+	const inboxTasks = $derived(
+		taskState.tasks
+			.filter((task) => task.status === 'Inbox')
+			.sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
 	);
 
 	function openTask(task: Task) {
@@ -60,21 +44,21 @@
 </script>
 
 <svelte:head>
-	<title>lull-pm — tasks</title>
+	<title>lull-pm — inbox</title>
 </svelte:head>
 
-<main class="mx-auto w-full max-w-6xl p-6 md:p-10">
-	<header class="flex flex-wrap items-start justify-between gap-4 pb-6">
-		<h1 class="text-2xl font-medium">Tasks</h1>
+<main class="mx-auto w-full max-w-2xl p-6 md:p-10">
+	<header class="flex flex-wrap items-start justify-between gap-4 pb-2">
+		<h1 class="text-2xl font-medium">Inbox</h1>
 		<Button variant="outline" size="sm" onclick={() => (newTaskOpen = true)}>
 			<PlusIcon class="size-4" />
 			New task
 		</Button>
 	</header>
-
-	<div class="pb-6">
-		<BucketFilter {buckets} bind:selected={selectedBucket} />
-	</div>
+	<p class="pb-6 text-sm text-muted-foreground">
+		Every task starts here, with no due date and no do date. Open one to give it a plan — a date
+		moves it to Unstarted, or send it to Whenever if timing just doesn't matter.
+	</p>
 
 	{#if taskState.error}
 		<div
@@ -89,21 +73,19 @@
 		<div class="flex justify-center py-16">
 			<Spinner class="size-5 text-muted-foreground" />
 		</div>
-	{:else if taskState.tasks.length === 0}
+	{:else if inboxTasks.length === 0}
 		<div class="rounded-lg border border-dashed p-10 text-center">
-			<p class="text-sm text-muted-foreground">
-				No tasks found. lull-pm reads them from notes in <code class="font-mono">Tasks/</code>.
-			</p>
+			<p class="text-sm text-muted-foreground">Inbox is empty — everything has a plan.</p>
 			<Button class="mt-4" variant="outline" size="sm" onclick={() => (newTaskOpen = true)}>
-				Create the first one
+				Capture something
 			</Button>
 		</div>
-	{:else if visibleTasks.length === 0}
-		<p class="py-16 text-center text-sm text-muted-foreground">
-			No tasks in {selectedBucket}.
-		</p>
 	{:else}
-		<TaskBoard tasks={visibleTasks} onselect={openTask} onstatuschange={taskManager.setStatus} />
+		<div class="flex flex-col gap-2">
+			{#each inboxTasks as task (task.path)}
+				<TaskCard {task} onclick={() => openTask(task)} />
+			{/each}
+		</div>
 	{/if}
 </main>
 
