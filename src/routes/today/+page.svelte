@@ -43,7 +43,7 @@
 		};
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks, projectState.projects));
+	const buckets = $derived(bucketsFrom(taskState.tasks));
 	const scoped = $derived(
 		selectedBucket === null
 			? taskState.tasks

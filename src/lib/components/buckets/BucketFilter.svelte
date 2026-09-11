@@ -28,7 +28,7 @@
 				onclick={() => (selected = bucket.name)}
 			>
 				{bucket.name}
-				<span class="opacity-60">{bucket.taskCount + bucket.projectCount}</span>
+				<span class="opacity-60">{bucket.taskCount}</span>
 			</button>
 		{/each}
 	</div>

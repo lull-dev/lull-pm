@@ -15,22 +15,17 @@ import {
 } from '$lib/vault/adapter';
 import {
 	getString,
-	getStringList,
 	parseNote,
 	setFrontmatterValue,
 	setFrontmatterValues,
 	type FrontmatterValue
 } from '$lib/vault/frontmatter';
 import { applyTemplate, formatDate } from '$lib/vault/templater';
-import { asWikilink, formatWikilink } from '$lib/vault/wikilink';
 import { readLullConfig } from '$lib/vault/settings';
 import type { Project } from '$lib/models/Project';
 
 export interface CreateProjectOptions {
-	org?: string[];
-	clients?: string[];
 	status?: string;
-	start?: string;
 	today?: Date;
 }
 
@@ -86,10 +81,7 @@ export class ProjectService {
 			: blankProject(today);
 
 		const edits: Record<string, FrontmatterValue> = {};
-		if (options.org) edits.org = options.org.map((name) => formatWikilink(name));
-		if (options.clients) edits.clients = options.clients.map((name) => formatWikilink(name));
 		if (options.status) edits.status = options.status;
-		if (options.start) edits.start = options.start;
 		if (Object.keys(edits).length > 0) content = setFrontmatterValues(content, edits);
 
 		await createNote(this.adapter, path, content);
@@ -110,38 +102,6 @@ export class ProjectService {
 		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'status', status));
 		return this.readProject(path);
 	}
-
-	async setOrg(path: string, org: string[]): Promise<Project> {
-		await editNote(this.adapter, path, (raw) =>
-			setFrontmatterValue(
-				raw,
-				'org',
-				org.map((name) => formatWikilink(name))
-			)
-		);
-		return this.readProject(path);
-	}
-
-	async setClients(path: string, clients: string[]): Promise<Project> {
-		await editNote(this.adapter, path, (raw) =>
-			setFrontmatterValue(
-				raw,
-				'clients',
-				clients.map((name) => formatWikilink(name))
-			)
-		);
-		return this.readProject(path);
-	}
-
-	async setStart(path: string, start: string | null): Promise<Project> {
-		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'start', start));
-		return this.readProject(path);
-	}
-
-	async setEnd(path: string, end: string | null): Promise<Project> {
-		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'end', end));
-		return this.readProject(path);
-	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -154,11 +114,7 @@ function toProject(path: string, raw: string): Project {
 	return {
 		path,
 		name: noteName(path),
-		org: getStringList(note, 'org').map((value) => asWikilink(value).name),
-		clients: getStringList(note, 'clients').map((value) => asWikilink(value).name),
 		status: getString(note, 'status') ?? '',
-		start: getString(note, 'start') ?? null,
-		end: getString(note, 'end') ?? null,
 		created: getString(note, 'created') ?? null
 	};
 }

@@ -9,7 +9,6 @@
 		SheetTitle,
 		SheetDescription
 	} from '$lib/components/ui/sheet';
-	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
@@ -29,15 +28,6 @@
 	const linkedTasks = $derived(
 		project ? taskState.tasks.filter((task) => task.projects.includes(project.name)) : []
 	);
-
-	function commitList(current: string[], next: string, apply: (values: string[]) => void) {
-		const values = next
-			.split(',')
-			.map((v) => v.trim())
-			.filter((v) => v !== '');
-		if (values.join(',') === current.join(',')) return;
-		apply(values);
-	}
 </script>
 
 <Sheet bind:open>
@@ -77,68 +67,6 @@
 							{/each}
 						</SelectContent>
 					</Select>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="project-start">
-							Start
-						</label>
-						<Input
-							id="project-start"
-							type="date"
-							value={project.start ?? ''}
-							onchange={(e) =>
-								projectManager.setStart(
-									currentPath,
-									(e.currentTarget as HTMLInputElement).value || null
-								)}
-						/>
-					</div>
-					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="project-end">End</label>
-						<Input
-							id="project-end"
-							type="date"
-							value={project.end ?? ''}
-							onchange={(e) =>
-								projectManager.setEnd(
-									currentPath,
-									(e.currentTarget as HTMLInputElement).value || null
-								)}
-						/>
-					</div>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="project-org">
-							Bucket (org)
-						</label>
-						<Input
-							id="project-org"
-							value={project.org.join(', ')}
-							placeholder="Personal, Work"
-							onblur={(e) =>
-								commitList(project.org, (e.currentTarget as HTMLInputElement).value, (values) =>
-									projectManager.setOrg(currentPath, values)
-								)}
-						/>
-					</div>
-					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="project-clients">
-							Clients
-						</label>
-						<Input
-							id="project-clients"
-							value={project.clients.join(', ')}
-							placeholder="BASF"
-							onblur={(e) =>
-								commitList(project.clients, (e.currentTarget as HTMLInputElement).value, (values) =>
-									projectManager.setClients(currentPath, values)
-								)}
-						/>
-					</div>
 				</div>
 
 				<div>

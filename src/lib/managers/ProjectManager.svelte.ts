@@ -85,22 +85,6 @@ export const projectManager = {
 		return mutate(path, (service) => service.setStatus(path, status));
 	},
 
-	setOrg(path: string, org: string[]): Promise<void> {
-		return mutate(path, (service) => service.setOrg(path, org));
-	},
-
-	setClients(path: string, clients: string[]): Promise<void> {
-		return mutate(path, (service) => service.setClients(path, clients));
-	},
-
-	setStart(path: string, start: string | null): Promise<void> {
-		return mutate(path, (service) => service.setStart(path, start));
-	},
-
-	setEnd(path: string, end: string | null): Promise<void> {
-		return mutate(path, (service) => service.setEnd(path, end));
-	},
-
 	async refreshQuietly(): Promise<void> {
 		try {
 			const service = await requireService();

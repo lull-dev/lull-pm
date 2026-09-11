@@ -50,9 +50,7 @@
 			.sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
 	);
 
-	const bucketOptions = $derived(
-		bucketsFrom(taskState.tasks, projectState.projects).map((bucket) => bucket.name)
-	);
+	const bucketOptions = $derived(bucketsFrom(taskState.tasks).map((bucket) => bucket.name));
 	const projectOptions = $derived(projectState.projects.map((project) => project.name));
 
 	function openTask(path: string) {

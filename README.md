@@ -71,12 +71,14 @@ a markdown file, so nothing lull-pm does is unavailable there.
 | Note type | Folder      | Key frontmatter                                              |
 | --------- | ----------- | ------------------------------------------------------------ |
 | Task      | `Tasks/`    | `status`, `priority`, `org`, `projects`, `due`, `do`, `done` |
-| Project   | `Projects/` | `org`, `clients`, `status`, `start`, `end`                   |
+| Project   | `Projects/` | `status`                                                     |
 
 The `org` property is what the UI calls a Bucket — no separate note type, just a filter over whatever
-values already show up there. `due` and `do` are the only frontmatter this session added beyond what
-the real vault's `Templates/Task Template.md`, `Templates/Project Template.md` and their `.base` query
-files already expected.
+values already show up there; lull-pm only tracks it on Tasks. Projects still have `org`, `clients`,
+`start` and `end` in the real vault's frontmatter, but lull-pm no longer reads or writes them — it
+leaves those bytes exactly as it finds them. `due` and `do` are the only frontmatter this session added
+beyond what the real vault's `Templates/Task Template.md`, `Templates/Project Template.md` and their
+`.base` query files already expected.
 
 ## Development
 

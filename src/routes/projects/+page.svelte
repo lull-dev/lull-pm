@@ -5,18 +5,15 @@
 	import ProjectCard from './components/ProjectCard.svelte';
 	import NewProjectDialog from './components/NewProjectDialog.svelte';
 	import ProjectDetailSheet from './components/ProjectDetailSheet.svelte';
-	import BucketFilter from '$lib/components/buckets/BucketFilter.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import type { Project } from '$lib/models/Project';
-	import { bucketsFrom } from '$lib/models/Bucket';
 
 	let newProjectOpen = $state(false);
 	let detailOpen = $state(false);
 	let selectedPath = $state<string | null>(null);
-	let selectedBucket = $state<string | null>(null);
 
 	$effect(() => {
 		if (
@@ -46,13 +43,6 @@
 		};
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks, projectState.projects));
-	const visibleProjects = $derived(
-		selectedBucket === null
-			? projectState.projects
-			: projectState.projects.filter((project) => project.org.includes(selectedBucket!))
-	);
-
 	function taskCountFor(project: Project): number {
 		return taskState.tasks.filter((task) => task.projects.includes(project.name)).length;
 	}
@@ -75,10 +65,6 @@
 			New project
 		</Button>
 	</header>
-
-	<div class="pb-4">
-		<BucketFilter {buckets} bind:selected={selectedBucket} />
-	</div>
 
 	{#if projectState.error}
 		<div
@@ -103,13 +89,9 @@
 				Create the first one
 			</Button>
 		</div>
-	{:else if visibleProjects.length === 0}
-		<p class="py-16 text-center text-sm text-muted-foreground">
-			No projects in {selectedBucket}.
-		</p>
 	{:else}
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each visibleProjects as project (project.path)}
+			{#each projectState.projects as project (project.path)}
 				<ProjectCard
 					{project}
 					taskCount={taskCountFor(project)}

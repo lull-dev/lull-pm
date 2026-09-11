@@ -24,15 +24,4 @@
 			{taskCount === 1 ? 'task' : 'tasks'}
 		</span>
 	</div>
-
-	{#if project.org.length > 0 || project.clients.length > 0}
-		<div class="flex flex-wrap gap-1">
-			{#each project.org as org (org)}
-				<Badge variant="secondary">{org}</Badge>
-			{/each}
-			{#each project.clients as client (client)}
-				<Badge variant="outline">{client}</Badge>
-			{/each}
-		</div>
-	{/if}
 </Card>

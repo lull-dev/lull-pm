@@ -3,9 +3,11 @@
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import TaskBoard from '$lib/components/tasks/TaskBoard.svelte';
+	import TaskCard from '$lib/components/tasks/TaskCard.svelte';
 	import NewTaskDialog from '$lib/components/tasks/NewTaskDialog.svelte';
 	import TaskDetailSheet from '$lib/components/tasks/TaskDetailSheet.svelte';
 	import BucketFilter from '$lib/components/buckets/BucketFilter.svelte';
+	import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -17,6 +19,7 @@
 	let detailOpen = $state(false);
 	let selectedPath = $state<string | null>(null);
 	let selectedBucket = $state<string | null>(null);
+	let view = $state<'board' | 'whenever'>('board');
 
 	$effect(() => {
 		if (vaultState.status === 'ready' && taskState.tasks.length === 0 && !taskState.isLoading) {
@@ -46,12 +49,13 @@
 		};
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks, projectState.projects));
+	const buckets = $derived(bucketsFrom(taskState.tasks));
 	const visibleTasks = $derived(
 		selectedBucket === null
 			? taskState.tasks
 			: taskState.tasks.filter((task) => task.org.includes(selectedBucket!))
 	);
+	const wheneverTasks = $derived(visibleTasks.filter((task) => task.status === 'Whenever'));
 
 	function openTask(task: Task) {
 		selectedPath = task.path;
@@ -72,7 +76,13 @@
 		</Button>
 	</header>
 
-	<div class="pb-4">
+	<div class="flex flex-wrap items-center justify-between gap-3 pb-4">
+		<Tabs bind:value={view}>
+			<TabsList>
+				<TabsTrigger value="board">Board</TabsTrigger>
+				<TabsTrigger value="whenever">Whenever</TabsTrigger>
+			</TabsList>
+		</Tabs>
 		<BucketFilter {buckets} bind:selected={selectedBucket} />
 	</div>
 
@@ -98,6 +108,16 @@
 				Create the first one
 			</Button>
 		</div>
+	{:else if view === 'whenever'}
+		{#if wheneverTasks.length === 0}
+			<p class="py-16 text-center text-sm text-muted-foreground">Nothing in Whenever.</p>
+		{:else}
+			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				{#each wheneverTasks as task (task.path)}
+					<TaskCard {task} onclick={() => openTask(task)} />
+				{/each}
+			</div>
+		{/if}
 	{:else if visibleTasks.length === 0}
 		<p class="py-16 text-center text-sm text-muted-foreground">
 			No tasks in {selectedBucket}.
