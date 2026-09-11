@@ -20,7 +20,10 @@
 
 	let { tasks, onselect, onstatuschange }: Props = $props();
 
-	const COLUMNS = TASK_STATUSES;
+	// Inbox and Whenever have their own dedicated triage views — the board only tracks tasks with an
+	// active plan, so those two statuses never get a column here even though they're still valid
+	// `TaskStatus` values a task can carry.
+	const COLUMNS = TASK_STATUSES.filter((status) => status !== 'Inbox' && status !== 'Whenever');
 	const FLIP_DURATION_MS = 180;
 
 	function sortTasks(list: Task[]): Task[] {
@@ -75,7 +78,7 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 	{#each COLUMNS as status (status)}
 		<section class="flex min-w-0 flex-col gap-2">
 			<h2
