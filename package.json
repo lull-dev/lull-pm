@@ -16,6 +16,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
 		"tauri": "tauri",
+		"tauri:dev": "tauri dev",
+		"tauri:build": "tauri build",
 		"deploy": "vite build && wrangler deploy"
 	},
 	"dependencies": {

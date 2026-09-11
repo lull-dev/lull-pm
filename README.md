@@ -82,11 +82,15 @@ files already expected.
 
 ```bash
 npm install
-npm test          # the safety net — run this before trusting any write
+npm test           # the safety net — run this before trusting any write
 npm run check
-npm run dev        # browser, against an in-memory sample vault
-npm run tauri dev  # desktop, against a real vault folder you pick
+npm run dev         # browser, against an in-memory sample vault
+npm run tauri:dev   # desktop, against a real vault folder you pick
+npm run tauri:build # a real installable build (.deb/.AppImage/.dmg/.exe, per platform)
 ```
 
+The first `tauri:dev` compiles the Rust side from scratch and takes a few minutes; every run after
+that is fast, since cargo caches the build.
+
 Point the desktop build at a **copy** of your vault until you trust it. There is a copy at
-`../lull-vault-dev`.
+`../lull/lull-vault-dev`.
