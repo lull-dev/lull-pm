@@ -19,6 +19,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import VaultGate from '$lib/components/vault/VaultGate.svelte';
 	import VaultBadge from '$lib/components/vault/VaultBadge.svelte';
+	import TitleBar from '$lib/components/TitleBar.svelte';
 	import { page } from '$app/state';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import { taskManager } from '$lib/managers/TaskManager.svelte';
@@ -42,56 +43,59 @@
 	];
 </script>
 
-<SidebarProvider>
-	<Sidebar collapsible="icon">
-		<SidebarHeader class="relative group-data-[collapsible=icon]:items-center">
-			<VaultBadge />
-			<SidebarTrigger class="absolute -right-10 top-3" />
-		</SidebarHeader>
+<div class="flex h-screen flex-col">
+	<TitleBar />
+	<SidebarProvider class="min-h-0 flex-1">
+		<Sidebar collapsible="icon">
+			<SidebarHeader class="relative group-data-[collapsible=icon]:items-center">
+				<VaultBadge />
+				<SidebarTrigger class="absolute -right-10 top-3" />
+			</SidebarHeader>
 
-		<SidebarContent>
-			<SidebarMenu class="px-2">
-				{#each links as link (link.href)}
+			<SidebarContent>
+				<SidebarMenu class="px-2">
+					{#each links as link (link.href)}
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								tooltipContent={link.ready ? link.label : `${link.label} — not built yet`}
+								isActive={page.url.pathname.startsWith(link.href)}
+							>
+								{#snippet child({ props })}
+									<a
+										{...props}
+										href={link.href}
+										class="{props.class} {link.ready ? '' : 'opacity-40'}"
+									>
+										<link.icon />
+										<span>{link.label}</span>
+									</a>
+								{/snippet}
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					{/each}
+				</SidebarMenu>
+			</SidebarContent>
+
+			<SidebarFooter>
+				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton
-							tooltipContent={link.ready ? link.label : `${link.label} — not built yet`}
-							isActive={page.url.pathname.startsWith(link.href)}
-						>
+						<SidebarMenuButton tooltipContent="Settings">
 							{#snippet child({ props })}
-								<a
-									{...props}
-									href={link.href}
-									class="{props.class} {link.ready ? '' : 'opacity-40'}"
-								>
-									<link.icon />
-									<span>{link.label}</span>
+								<a {...props} href="/settings">
+									<SettingsIcon />
+									<span>Settings</span>
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
 					</SidebarMenuItem>
-				{/each}
-			</SidebarMenu>
-		</SidebarContent>
+				</SidebarMenu>
+			</SidebarFooter>
+		</Sidebar>
 
-		<SidebarFooter>
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<SidebarMenuButton tooltipContent="Settings">
-						{#snippet child({ props })}
-							<a {...props} href="/settings">
-								<SettingsIcon />
-								<span>Settings</span>
-							</a>
-						{/snippet}
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-			</SidebarMenu>
-		</SidebarFooter>
-	</Sidebar>
-
-	<SidebarInset class="min-w-0 overflow-auto">
-		<VaultGate>
-			{@render children()}
-		</VaultGate>
-	</SidebarInset>
-</SidebarProvider>
+		<SidebarInset class="min-w-0 overflow-auto">
+			<VaultGate>
+				{@render children()}
+			</VaultGate>
+		</SidebarInset>
+	</SidebarProvider>
+</div>

@@ -1,10 +1,12 @@
 {
 	"$schema": "../gen/schemas/desktop-schema.json",
 	"identifier": "default",
-	"description": "Filesystem access to the chosen vault, a folder picker, and obsidian:// links.",
+	"description": "Filesystem access to the chosen vault, a folder picker, obsidian:// links, and the custom title bar (decorations are off, so lull-pm draws its own drag region and close button).",
 	"windows": ["main"],
 	"permissions": [
 		"core:default",
+		"core:window:allow-close",
+		"core:window:allow-start-dragging",
 		"dialog:allow-open",
 		"fs:allow-read-text-file",
 		"fs:allow-write-text-file",
