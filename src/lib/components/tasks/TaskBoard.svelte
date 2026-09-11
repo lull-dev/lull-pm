@@ -92,6 +92,9 @@
 					// A short hold before a touch drag starts, so a finger scrolling the page past the
 					// board doesn't get mistaken for the start of a drag.
 					delayTouchStart: true,
+					// The library's default is an inline yellow outline, which wins over dropTargetClasses
+					// on specificity alone — has to be cleared for our classes to show instead.
+					dropTargetStyle: {},
 					dropTargetClasses: ['outline-2', 'outline-dashed', 'outline-primary/40', 'rounded-lg']
 				}}
 				onconsider={(e) => consider(status, e)}

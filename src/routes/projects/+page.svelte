@@ -68,15 +68,15 @@
 </svelte:head>
 
 <main class="mx-auto w-full max-w-6xl p-6 md:p-10">
-	<header class="flex flex-wrap items-start justify-between gap-4 pb-6">
-		<h1 class="text-2xl font-medium">Projects</h1>
-		<Button variant="outline" size="sm" onclick={() => (newProjectOpen = true)}>
+	<header class="flex flex-wrap items-center justify-between gap-4 pb-3">
+		<h1 class="text-base font-medium">Projects</h1>
+		<Button variant="outline" size="xs" onclick={() => (newProjectOpen = true)}>
 			<PlusIcon class="size-4" />
 			New project
 		</Button>
 	</header>
 
-	<div class="pb-6">
+	<div class="pb-4">
 		<BucketFilter {buckets} bind:selected={selectedBucket} />
 	</div>
 

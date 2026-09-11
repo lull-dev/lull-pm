@@ -48,9 +48,9 @@
 </svelte:head>
 
 <main class="mx-auto w-full max-w-2xl p-6 md:p-10">
-	<header class="flex flex-wrap items-start justify-between gap-4 pb-2">
-		<h1 class="text-2xl font-medium">Inbox</h1>
-		<Button variant="outline" size="sm" onclick={() => (newTaskOpen = true)}>
+	<header class="flex flex-wrap items-center justify-between gap-4 pb-2">
+		<h1 class="text-base font-medium">Inbox</h1>
+		<Button variant="outline" size="xs" onclick={() => (newTaskOpen = true)}>
 			<PlusIcon class="size-4" />
 			New task
 		</Button>
