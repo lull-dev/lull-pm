@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
+	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
-	import TaskCard from '$lib/components/tasks/TaskCard.svelte';
+	import InboxRow from './components/InboxRow.svelte';
 	import NewTaskDialog from '$lib/components/tasks/NewTaskDialog.svelte';
 	import TaskDetailSheet from '$lib/components/tasks/TaskDetailSheet.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import type { Task } from '$lib/models/Task';
+	import { bucketsFrom } from '$lib/models/Bucket';
 
 	let newTaskOpen = $state(false);
 	let detailOpen = $state(false);
@@ -18,6 +19,13 @@
 		if (vaultState.status === 'ready' && taskState.tasks.length === 0 && !taskState.isLoading) {
 			void taskManager.load();
 		}
+		if (
+			vaultState.status === 'ready' &&
+			projectState.projects.length === 0 &&
+			!projectState.isLoading
+		) {
+			void projectManager.load();
+		}
 	});
 
 	// Follow the vault: an edit made in Obsidian should show up here without a manual refresh.
@@ -25,9 +33,14 @@
 		const adapter = vaultState.adapter;
 		if (!adapter) return;
 
-		let dispose: (() => void) | undefined;
-		void adapter.watch(() => taskManager.refreshQuietly()).then((fn) => (dispose = fn));
-		return () => dispose?.();
+		let disposeTasks: (() => void) | undefined;
+		let disposeProjects: (() => void) | undefined;
+		void adapter.watch(() => taskManager.refreshQuietly()).then((fn) => (disposeTasks = fn));
+		void adapter.watch(() => projectManager.refreshQuietly()).then((fn) => (disposeProjects = fn));
+		return () => {
+			disposeTasks?.();
+			disposeProjects?.();
+		};
 	});
 
 	// Most recently captured first, so triage works through what just landed here.
@@ -37,8 +50,13 @@
 			.sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
 	);
 
-	function openTask(task: Task) {
-		selectedPath = task.path;
+	const bucketOptions = $derived(
+		bucketsFrom(taskState.tasks, projectState.projects).map((bucket) => bucket.name)
+	);
+	const projectOptions = $derived(projectState.projects.map((project) => project.name));
+
+	function openTask(path: string) {
+		selectedPath = path;
 		detailOpen = true;
 	}
 </script>
@@ -47,7 +65,7 @@
 	<title>lull-pm — inbox</title>
 </svelte:head>
 
-<main class="mx-auto w-full max-w-2xl p-6 md:p-10">
+<main class="mx-auto w-full max-w-3xl p-6 md:p-10">
 	<header class="flex flex-wrap items-center justify-between gap-4 pb-2">
 		<h1 class="text-base font-medium">Inbox</h1>
 		<Button variant="outline" size="xs" onclick={() => (newTaskOpen = true)}>
@@ -56,8 +74,8 @@
 		</Button>
 	</header>
 	<p class="pb-6 text-sm text-muted-foreground">
-		Every task starts here, with no due date and no do date. Open one to give it a plan — a date
-		moves it to Unstarted, or send it to Whenever if timing just doesn't matter.
+		Every task starts here, with no due date and no do date. Give one a date, a bucket or a project
+		right here, then send it to Whenever (no rush) or Unstarted (it has a plan).
 	</p>
 
 	{#if taskState.error}
@@ -83,7 +101,7 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each inboxTasks as task (task.path)}
-				<TaskCard {task} onclick={() => openTask(task)} />
+				<InboxRow {task} {bucketOptions} {projectOptions} onopen={() => openTask(task.path)} />
 			{/each}
 		</div>
 	{/if}

@@ -14,6 +14,7 @@
 	} from '$lib/components/ui/sidebar';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
 	import InboxIcon from '@lucide/svelte/icons/inbox';
+	import CalendarDaysIcon from '@lucide/svelte/icons/calendar-days';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import TargetIcon from '@lucide/svelte/icons/target';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
@@ -36,9 +37,10 @@
 	});
 
 	const links = [
+		{ href: '/inbox', label: 'Inbox', icon: InboxIcon, ready: true },
+		{ href: '/today', label: 'Today', icon: CalendarDaysIcon, ready: true },
 		{ href: '/tasks', label: 'Tasks', icon: ListChecksIcon, ready: true },
 		{ href: '/projects', label: 'Projects', icon: FolderIcon, ready: true },
-		{ href: '/inbox', label: 'Inbox', icon: InboxIcon, ready: true },
 		{ href: '/goals', label: 'Goals', icon: TargetIcon, ready: false }
 	];
 </script>
