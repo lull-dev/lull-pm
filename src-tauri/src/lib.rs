@@ -20,6 +20,30 @@ fn allow_vault(app: tauri::AppHandle, path: String) -> Result<(), String> {
         .allow_directory(&vault, true)
         .map_err(|e| format!("Could not grant access to {path}: {e}"))?;
 
+    // tauri-plugin-fs's glob matching treats a leading dot literally by default on Unix, the same
+    // way a shell's own `*` skips hidden files — and unlike the *declared* capability scope, the
+    // scope widened here at runtime is built with that behaviour hard-coded, so `requireLiteralLeadingDot`
+    // in tauri.conf.json has no effect on it. A `**` under the vault root therefore never matches
+    // `.obsidian`, `.lull`, or any other dot-folder a vault has — so every dot-entry at the vault
+    // root is allowed explicitly here, by its own exact path rather than by wildcard.
+    if let Ok(entries) = std::fs::read_dir(&vault) {
+        for entry in entries.flatten() {
+            if !entry.file_name().to_string_lossy().starts_with('.') {
+                continue;
+            }
+            let entry_path = entry.path();
+            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            let allowed = if is_dir {
+                scope.allow_directory(&entry_path, true)
+            } else {
+                scope.allow_file(&entry_path)
+            };
+            if let Err(e) = allowed {
+                log::warn!("Could not widen scope for {}: {e}", entry_path.display());
+            }
+        }
+    }
+
     Ok(())
 }
 

@@ -45,7 +45,11 @@
 
 <div class="flex h-screen flex-col">
 	<TitleBar />
-	<SidebarProvider class="min-h-0 flex-1">
+	<!-- The sidebar panel is `position: fixed` internally (for its collapse animation), which
+	     positions against the viewport unless an ancestor establishes a containing block —
+	     `contain: layout` makes this wrapper that ancestor, so `fixed inset-y-0` inside it means
+	     "the height of what's left below the title bar" rather than "the whole window". -->
+	<SidebarProvider class="min-h-0 flex-1" style="contain: layout;">
 		<Sidebar collapsible="icon">
 			<SidebarHeader class="relative group-data-[collapsible=icon]:items-center">
 				<VaultBadge />
