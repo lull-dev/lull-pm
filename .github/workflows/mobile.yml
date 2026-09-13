@@ -1,0 +1,171 @@
+name: Mobile
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# `gen/android` and `gen/apple` are generated projects, not source. They are rebuilt from
+# tauri.conf.json on every run rather than committed, so the mobile projects can never drift
+# out of sync with the desktop config.
+env:
+  NDK_VERSION: '27.2.12479018'
+
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      # `secrets` is not a valid context in a step-level `if:`, but job-level `env` can read it.
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;${NDK_VERSION}"
+          echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Generate the Android project
+        run: npx tauri android init
+
+      # A release APK is only installable once it is signed, so signing decides which variant we
+      # build: configure the four secrets below and CI produces a signed release APK + AAB,
+      # otherwise it falls back to a debug APK, which Android signs with its own debug key and
+      # which can be sideloaded as-is.
+      - name: Configure release signing
+        id: signing
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          password=${ANDROID_KEYSTORE_PASSWORD}
+          keyAlias=${ANDROID_KEY_ALIAS}
+          storeFile=${RUNNER_TEMP}/keystore.jks
+          EOF
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release APK and AAB
+        if: ${{ steps.signing.outputs.signed == 'true' }}
+        run: npx tauri android build --apk --aab
+
+      - name: Build debug APK
+        if: ${{ steps.signing.outputs.signed != 'true' }}
+        run: npx tauri android build --debug --apk
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android
+          if-no-files-found: error
+          path: |
+            src-tauri/gen/android/app/build/outputs/**/*.apk
+            src-tauri/gen/android/app/build/outputs/**/*.aab
+
+  # iOS cannot be built without an Apple Developer team: the toolchain signs during the build
+  # rather than after it, so there is no unsigned fallback the way there is on Android. The job
+  # skips itself when the signing secrets are absent.
+  ios:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Apple signing credentials
+        id: check
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+        run: |
+          if [ -n "$APPLE_DEVELOPMENT_TEAM" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping iOS build — set the APPLE_* secrets to enable it."
+          fi
+
+      - name: Set up Node
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Set up Rust
+        if: steps.check.outputs.ready == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Cache Rust build
+        if: steps.check.outputs.ready == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        if: steps.check.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Import signing certificate
+        if: steps.check.outputs.ready == 'true'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Generate the iOS project
+        if: steps.check.outputs.ready == 'true'
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+        run: npx tauri ios init
+
+      - name: Build IPA
+        if: steps.check.outputs.ready == 'true'
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+        run: npx tauri ios build --export-method ${{ secrets.APPLE_EXPORT_METHOD || 'debugging' }}
+
+      - name: Upload iOS artifacts
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          if-no-files-found: error
+          path: src-tauri/gen/apple/build/**/*.ipa
