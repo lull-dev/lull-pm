@@ -14,11 +14,13 @@
 
 	interface Props {
 		open: boolean;
+		/** A bucket is a project with `bucket: true` — this just sets the flag at creation time. */
+		kind?: 'project' | 'bucket';
 		onCreated: (path: string) => void;
 		onClose: () => void;
 	}
 
-	let { open = $bindable(), onCreated, onClose }: Props = $props();
+	let { open = $bindable(), kind = 'project', onCreated, onClose }: Props = $props();
 
 	let name = $state('');
 	let status = $state('');
@@ -33,7 +35,8 @@
 		error = null;
 		try {
 			const project = await projectManager.createProject(name.trim(), {
-				status: status || undefined
+				status: status || undefined,
+				bucket: kind === 'bucket'
 			});
 			name = '';
 			status = '';
@@ -50,10 +53,14 @@
 	<AlertDialogContent>
 		<form onsubmit={submit}>
 			<AlertDialogHeader>
-				<AlertDialogTitle>New project</AlertDialogTitle>
+				<AlertDialogTitle>{kind === 'bucket' ? 'New bucket' : 'New project'}</AlertDialogTitle>
 				<AlertDialogDescription>
 					Creates a note in <code class="font-mono">Projects/</code>, from your vault's Project
 					Template when it has one.
+					{#if kind === 'bucket'}
+						Buckets are projects too — just flagged with <code class="font-mono">bucket: true</code> so
+						they show up here instead of on the Projects page.
+					{/if}
 				</AlertDialogDescription>
 			</AlertDialogHeader>
 
@@ -80,7 +87,9 @@
 
 			<AlertDialogFooter>
 				<Button type="button" variant="ghost" onclick={onClose}>Cancel</Button>
-				<Button type="submit" disabled={saving || name.trim() === ''}>Create project</Button>
+				<Button type="submit" disabled={saving || name.trim() === ''}>
+					{kind === 'bucket' ? 'Create bucket' : 'Create project'}
+				</Button>
 			</AlertDialogFooter>
 		</form>
 	</AlertDialogContent>

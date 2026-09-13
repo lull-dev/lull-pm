@@ -8,6 +8,11 @@ on:
 
 jobs:
   release:
+    # tauri-action creates a GitHub Release; without this the default GITHUB_TOKEN is
+    # read-only and the create-release call fails with "Resource not accessible by integration".
+    permissions:
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
+	import { projectState } from '$lib/managers/ProjectManager.svelte';
 	import { vaultManager } from '$lib/managers/VaultManager.svelte';
 	import {
 		Sheet,
@@ -11,6 +12,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
+	import SearchableSelect from '$lib/components/universals/SearchableSelect.svelte';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import {
 		TASK_PRIORITIES,
@@ -27,6 +29,11 @@
 	let { open = $bindable(), path }: Props = $props();
 
 	const task = $derived(path ? (taskState.tasks.find((t) => t.path === path) ?? null) : null);
+
+	// A bucket is a project note flagged bucket: true — the controlled vocabulary org is assigned from.
+	const bucketOptions = $derived(
+		projectState.projects.filter((project) => project.bucket).map((project) => project.name)
+	);
 
 	let newStep = $state('');
 
@@ -137,17 +144,12 @@
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="task-org">
-							Bucket (org)
-						</label>
-						<Input
-							id="task-org"
-							value={task.org.join(', ')}
-							placeholder="Personal, Work"
-							onblur={(e) =>
-								commitList(task.org, (e.currentTarget as HTMLInputElement).value, (values) =>
-									taskManager.setOrg(currentPath, values)
-								)}
+						<span class="mb-1 block text-xs text-muted-foreground">Bucket</span>
+						<SearchableSelect
+							value={task.org[0]}
+							options={bucketOptions}
+							placeholder="Search buckets…"
+							onValueChange={(value) => taskManager.setOrg(currentPath, [value])}
 						/>
 					</div>
 					<div>
