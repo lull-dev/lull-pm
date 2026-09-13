@@ -16,4 +16,9 @@ export interface Project {
 	status: string;
 	/** `YYYY-MM-DD`, or null when unset. */
 	created: string | null;
+	/**
+	 * A bucket is a project with `bucket: true` — same note type, shown on a different page. There is
+	 * no separate Bucket note; this flag is the only thing that distinguishes the two.
+	 */
+	bucket: boolean;
 }

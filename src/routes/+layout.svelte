@@ -16,6 +16,7 @@
 	import InboxIcon from '@lucide/svelte/icons/inbox';
 	import CalendarDaysIcon from '@lucide/svelte/icons/calendar-days';
 	import FolderIcon from '@lucide/svelte/icons/folder';
+	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import TargetIcon from '@lucide/svelte/icons/target';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import VaultGate from '$lib/components/vault/VaultGate.svelte';
@@ -41,6 +42,7 @@
 		{ href: '/today', label: 'Today', icon: CalendarDaysIcon, ready: true },
 		{ href: '/tasks', label: 'Tasks', icon: ListChecksIcon, ready: true },
 		{ href: '/projects', label: 'Projects', icon: FolderIcon, ready: true },
+		{ href: '/buckets', label: 'Buckets', icon: BoxesIcon, ready: true },
 		{ href: '/goals', label: 'Goals', icon: TargetIcon, ready: false }
 	];
 </script>

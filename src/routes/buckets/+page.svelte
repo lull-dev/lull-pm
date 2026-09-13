@@ -2,16 +2,16 @@
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
-	import ProjectCard from './components/ProjectCard.svelte';
-	import NewProjectDialog from './components/NewProjectDialog.svelte';
-	import ProjectDetailSheet from './components/ProjectDetailSheet.svelte';
+	import ProjectCard from '../projects/components/ProjectCard.svelte';
+	import NewProjectDialog from '../projects/components/NewProjectDialog.svelte';
+	import ProjectDetailSheet from '../projects/components/ProjectDetailSheet.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import type { Project } from '$lib/models/Project';
 
-	let newProjectOpen = $state(false);
+	let newBucketOpen = $state(false);
 	let detailOpen = $state(false);
 	let selectedPath = $state<string | null>(null);
 
@@ -43,29 +43,29 @@
 		};
 	});
 
-	// Buckets are projects too (bucket: true) — they live on their own page, not here.
-	const visibleProjects = $derived(projectState.projects.filter((project) => !project.bucket));
+	// A bucket is just a project with bucket: true — same note type, own page.
+	const buckets = $derived(projectState.projects.filter((project) => project.bucket));
 
 	function taskCountFor(project: Project): number {
-		return taskState.tasks.filter((task) => task.projects.includes(project.name)).length;
+		return taskState.tasks.filter((task) => task.org.includes(project.name)).length;
 	}
 
-	function openProject(project: Project) {
+	function openBucket(project: Project) {
 		selectedPath = project.path;
 		detailOpen = true;
 	}
 </script>
 
 <svelte:head>
-	<title>lull-pm — projects</title>
+	<title>lull-pm — buckets</title>
 </svelte:head>
 
 <main class="mx-auto w-full max-w-6xl p-6 md:p-10">
 	<header class="flex flex-wrap items-center justify-between gap-4 pb-3">
-		<h1 class="text-base font-medium">Projects</h1>
-		<Button variant="outline" size="xs" onclick={() => (newProjectOpen = true)}>
+		<h1 class="text-base font-medium">Buckets</h1>
+		<Button variant="outline" size="xs" onclick={() => (newBucketOpen = true)}>
 			<PlusIcon class="size-4" />
-			New project
+			New bucket
 		</Button>
 	</header>
 
@@ -78,27 +78,28 @@
 		</div>
 	{/if}
 
-	{#if projectState.isLoading && projectState.projects.length === 0}
+	{#if projectState.isLoading && buckets.length === 0}
 		<div class="flex justify-center py-16">
 			<Spinner class="size-5 text-muted-foreground" />
 		</div>
-	{:else if visibleProjects.length === 0}
+	{:else if buckets.length === 0}
 		<div class="rounded-lg border border-dashed p-10 text-center">
 			<p class="text-sm text-muted-foreground">
-				No projects found. lull-pm reads them from notes in <code class="font-mono">Projects/</code
-				>.
+				No buckets found. A bucket is a project note in <code class="font-mono">Projects/</code>
+				with
+				<code class="font-mono">bucket: true</code>.
 			</p>
-			<Button class="mt-4" variant="outline" size="sm" onclick={() => (newProjectOpen = true)}>
+			<Button class="mt-4" variant="outline" size="sm" onclick={() => (newBucketOpen = true)}>
 				Create the first one
 			</Button>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each visibleProjects as project (project.path)}
+			{#each buckets as project (project.path)}
 				<ProjectCard
 					{project}
 					taskCount={taskCountFor(project)}
-					onclick={() => openProject(project)}
+					onclick={() => openBucket(project)}
 				/>
 			{/each}
 		</div>
@@ -106,10 +107,11 @@
 </main>
 
 <NewProjectDialog
-	bind:open={newProjectOpen}
-	onClose={() => (newProjectOpen = false)}
+	kind="bucket"
+	bind:open={newBucketOpen}
+	onClose={() => (newBucketOpen = false)}
 	onCreated={(path) => {
-		newProjectOpen = false;
+		newBucketOpen = false;
 		selectedPath = path;
 		detailOpen = true;
 	}}
