@@ -14,6 +14,7 @@ import {
 	type VaultFile
 } from '$lib/vault/adapter';
 import {
+	getBoolean,
 	getString,
 	parseNote,
 	setFrontmatterValue,
@@ -26,6 +27,8 @@ import type { Project } from '$lib/models/Project';
 
 export interface CreateProjectOptions {
 	status?: string;
+	/** Defaults to `false` — a plain project rather than a bucket. */
+	bucket?: boolean;
 	today?: Date;
 }
 
@@ -82,6 +85,7 @@ export class ProjectService {
 
 		const edits: Record<string, FrontmatterValue> = {};
 		if (options.status) edits.status = options.status;
+		if (options.bucket !== undefined) edits.bucket = options.bucket;
 		if (Object.keys(edits).length > 0) content = setFrontmatterValues(content, edits);
 
 		await createNote(this.adapter, path, content);
@@ -102,6 +106,11 @@ export class ProjectService {
 		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'status', status));
 		return this.readProject(path);
 	}
+
+	async setBucket(path: string, bucket: boolean): Promise<Project> {
+		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'bucket', bucket));
+		return this.readProject(path);
+	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -115,7 +124,8 @@ function toProject(path: string, raw: string): Project {
 		path,
 		name: noteName(path),
 		status: getString(note, 'status') ?? '',
-		created: getString(note, 'created') ?? null
+		created: getString(note, 'created') ?? null,
+		bucket: getBoolean(note, 'bucket') ?? false
 	};
 }
 
@@ -125,6 +135,7 @@ function blankProject(today: Date): string {
 		'---\n' +
 		'categories:\n' +
 		'  - "[[Projects]]"\n' +
+		'bucket: false\n' +
 		'org:\n' +
 		'clients:\n' +
 		'status:\n' +

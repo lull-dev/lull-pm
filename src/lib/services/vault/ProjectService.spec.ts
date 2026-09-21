@@ -74,6 +74,17 @@ describe('reading', () => {
 		const project = await service.readProject('Projects/Bare.md');
 		expect(project.status).toBe('');
 	});
+
+	it('defaults bucket to false for a note missing the flag', async () => {
+		const project = await service.readProject('Projects/Marketing Website.md');
+		expect(project.bucket).toBe(false);
+	});
+
+	it('reads bucket: true off a note that has it', async () => {
+		await adapter.write('Projects/Personal.md', '---\nbucket: true\n---\n');
+		const project = await service.readProject('Projects/Personal.md');
+		expect(project.bucket).toBe(true);
+	});
 });
 
 describe('creating', () => {
@@ -93,6 +104,20 @@ describe('creating', () => {
 		});
 
 		expect(project.status).toBe('Idea');
+	});
+
+	it('applies bucket: true on creation', async () => {
+		const project = await service.createProject('Personal', {
+			bucket: true,
+			today: new Date('2026-09-08T12:00:00')
+		});
+
+		expect(project.bucket).toBe(true);
+	});
+
+	it('defaults bucket to false when not given', async () => {
+		const project = await service.createProject('Work', { today: new Date('2026-09-08T12:00:00') });
+		expect(project.bucket).toBe(false);
 	});
 
 	it('refuses to overwrite an existing project', async () => {
@@ -115,5 +140,10 @@ describe('editing', () => {
 		const before = await adapter.read(path);
 		await service.setStatus(path, 'In Progress'); // already In Progress — should be a no-op
 		expect(await adapter.read(path)).toBe(before);
+	});
+
+	it('flips a project into a bucket and back', async () => {
+		expect((await service.setBucket(path, true)).bucket).toBe(true);
+		expect((await service.setBucket(path, false)).bucket).toBe(false);
 	});
 });

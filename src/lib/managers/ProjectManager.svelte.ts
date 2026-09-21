@@ -85,6 +85,10 @@ export const projectManager = {
 		return mutate(path, (service) => service.setStatus(path, status));
 	},
 
+	setBucket(path: string, bucket: boolean): Promise<void> {
+		return mutate(path, (service) => service.setBucket(path, bucket));
+	},
+
 	async refreshQuietly(): Promise<void> {
 		try {
 			const service = await requireService();

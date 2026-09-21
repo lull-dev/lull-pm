@@ -26,5 +26,10 @@ vite.config.ts.timestamp-*
 /src-tauri/target
 /src-tauri/gen/schemas
 
+# Generated mobile projects — CI runs `tauri android init` / `tauri ios init` on every build,
+# so these are rebuilt from tauri.conf.json rather than tracked.
+/src-tauri/gen/android
+/src-tauri/gen/apple
+
 # Local scratch vault used for development
 /.devvault

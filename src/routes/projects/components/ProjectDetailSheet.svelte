@@ -25,8 +25,13 @@
 		path ? (projectState.projects.find((p) => p.path === path) ?? null) : null
 	);
 
+	// A bucket links to tasks via `org`; a plain project links via `projects`.
 	const linkedTasks = $derived(
-		project ? taskState.tasks.filter((task) => task.projects.includes(project.name)) : []
+		project
+			? taskState.tasks.filter((task) =>
+					project.bucket ? task.org.includes(project.name) : task.projects.includes(project.name)
+				)
+			: []
 	);
 </script>
 
@@ -69,13 +74,30 @@
 					</Select>
 				</div>
 
+				<label class="flex items-center gap-2 text-sm">
+					<input
+						type="checkbox"
+						checked={project.bucket}
+						onchange={(e) =>
+							projectManager.setBucket(currentPath, (e.currentTarget as HTMLInputElement).checked)}
+					/>
+					This is a bucket
+					<span class="text-xs text-muted-foreground">
+						— shows on the Buckets page instead of Projects
+					</span>
+				</label>
+
 				<div>
 					<h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
 						Tasks
 					</h3>
 					{#if linkedTasks.length === 0}
 						<p class="text-xs text-muted-foreground">
-							No tasks link here yet — add this project's name to a task's Projects field.
+							{#if project.bucket}
+								No tasks link here yet — assign this bucket to a task's Bucket field.
+							{:else}
+								No tasks link here yet — add this project's name to a task's Projects field.
+							{/if}
 						</p>
 					{:else}
 						<div class="flex flex-col gap-1.5">

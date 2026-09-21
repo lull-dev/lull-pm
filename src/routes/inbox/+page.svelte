@@ -9,7 +9,6 @@
 	import { Spinner } from '$lib/components/ui/spinner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import { bucketsFrom } from '$lib/models/Bucket';
 
 	let newTaskOpen = $state(false);
 	let detailOpen = $state(false);
@@ -50,7 +49,11 @@
 			.sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
 	);
 
-	const bucketOptions = $derived(bucketsFrom(taskState.tasks).map((bucket) => bucket.name));
+	// A bucket is a project note flagged bucket: true — this is the controlled vocabulary a task's
+	// org field is assigned from, not just whatever values happen to already be in use.
+	const bucketOptions = $derived(
+		projectState.projects.filter((project) => project.bucket).map((project) => project.name)
+	);
 	const projectOptions = $derived(projectState.projects.map((project) => project.name));
 
 	function openTask(path: string) {
