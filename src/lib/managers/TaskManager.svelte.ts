@@ -8,7 +8,9 @@
 import { SvelteSet } from 'svelte/reactivity';
 import type { CreateTaskOptions } from '$lib/services/vault/TaskService';
 import { TaskService } from '$lib/services/vault/TaskService';
+import type { Parent } from '$lib/models/Parent';
 import type { Task, TaskPriority, TaskStatus } from '$lib/models/Task';
+import { indexManager } from './IndexManager.svelte';
 import { vaultState } from './VaultManager.svelte';
 
 export const taskState = $state({
@@ -61,7 +63,7 @@ export const taskManager = {
 		taskState.error = null;
 		try {
 			const service = await requireService();
-			taskState.tasks = await service.listTasks();
+			taskState.tasks = service.listTasks(await indexManager.ensure());
 		} catch (error) {
 			taskState.error = message(error);
 		} finally {
@@ -74,6 +76,8 @@ export const taskManager = {
 		try {
 			const service = await requireService();
 			const task = await service.createTask(name, options);
+			// A new note changes what the index holds, so the next read must rebuild it.
+			indexManager.invalidate();
 			patch(task);
 			return task;
 		} catch (error) {
@@ -96,6 +100,11 @@ export const taskManager = {
 
 	setDoDate(path: string, doDate: string | null): Promise<void> {
 		return mutate(path, (service) => service.setDoDate(path, doDate));
+	},
+
+	/** Connect the task to a bucket or a project — never both. */
+	setParent(path: string, parent: Parent | null): Promise<void> {
+		return mutate(path, (service) => service.setParent(path, parent));
 	},
 
 	setOrg(path: string, org: string[]): Promise<void> {
@@ -125,8 +134,9 @@ export const taskManager = {
 	/** Refresh after an external change, without the loading flicker. */
 	async refreshQuietly(): Promise<void> {
 		try {
+			indexManager.invalidate();
 			const service = await requireService();
-			taskState.tasks = await service.listTasks();
+			taskState.tasks = service.listTasks(await indexManager.ensure());
 		} catch {
 			// A refresh that fails is not worth interrupting the user over; the next one will do.
 		}

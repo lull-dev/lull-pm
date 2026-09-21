@@ -2,9 +2,10 @@
  * A small stand-in vault, used when lull-pm runs in a plain browser tab with no filesystem to reach.
  *
  * It mirrors the shape of a real vault — Obsidian config, task/project templates, and a handful of
- * notes across a couple of "orgs" (the `org:` property lull-pm treats as a Bucket) — so `npm run dev`
+ * notes across a couple of companies (the `org:` property) — so `npm run dev`
  * exercises the same code paths the desktop build does. One task sits in each status, so every board
- * column and the Inbox page have something to show.
+ * column and the Inbox page have something to show, and three notes deliberately do not fit the
+ * structure, so the Overview page shows findings rather than only its empty state.
  */
 
 import { MemoryVaultAdapter } from './adapter.memory';
@@ -46,6 +47,33 @@ end:
 ## Tasks
 `;
 
+/** A second project type, so the Settings page and the New project dialog have a choice to show. */
+const CONTENT_PROJECT_TEMPLATE = `---
+categories:
+  - "[[Projects]]"
+type: Content
+statuses: [Idea, Scripting, Filming, Editing, Review, Published]
+status: Idea
+org:
+content channel:
+created: <% tp.date.now("YYYY-MM-DD") %>
+---
+
+## Script
+
+## Shot list
+`;
+
+/** Mirrors the real vault's Templater setup: folder templates, enabled. */
+const TEMPLATER_CONFIG = JSON.stringify({
+	templates_folder: 'Templates',
+	enable_folder_templates: true,
+	folder_templates: [
+		{ folder: 'Projects', template: 'Templates/Project Template.md' },
+		{ folder: 'Projects/Videos', template: 'Templates/Content Project Template.md' }
+	]
+});
+
 export function createSampleVault(): MemoryVaultAdapter {
 	return new MemoryVaultAdapter(
 		{
@@ -53,6 +81,8 @@ export function createSampleVault(): MemoryVaultAdapter {
 
 			'Templates/Task Template.md': TASK_TEMPLATE,
 			'Templates/Project Template.md': PROJECT_TEMPLATE,
+			'Templates/Content Project Template.md': CONTENT_PROJECT_TEMPLATE,
+			'.obsidian/plugins/templater-obsidian/data.json': TEMPLATER_CONFIG,
 
 			'Projects/Marketing Website.md': `---
 categories:
@@ -192,6 +222,8 @@ categories:
 status: Inbox
 priority: Low
 org:
+bucket:
+  - "[[Personal]]"
 projects:
 due:
 do:
@@ -207,6 +239,72 @@ done:
 -  [ ] Eggs
 
 ## Notes
+`,
+
+			'Companies/lull-Software/lull.md': `---
+categories:
+  - "[[Categories/Companies|Companies]]"
+created: 2026-01-10
+---
+
+## Projects
+`,
+
+			'Goals/Ship lull-pm 1.0.md': `---
+categories:
+  - "[[Goals]]"
+status: In Progress
+org:
+  - "[[lull]]"
+created: 2026-09-01
+---
+`,
+
+			'Categories/Buckets/Personal.md': `---
+categories:
+  - "[[Buckets]]"
+created: 2026-04-01
+---
+`,
+
+			'Categories/Buckets/Work.md': `---
+categories:
+  - "[[Buckets]]"
+created: 2026-04-01
+---
+`,
+
+			/* --- Notes that deliberately do not fit, so the Overview page shows its real state --- */
+
+			// Connected to a company and a bucket at once. The rule says one or the other.
+			'Projects/Rebrand.md': `---
+categories:
+  - "[[Projects]]"
+org:
+  - "[[lull]]"
+bucket:
+  - "[[Personal]]"
+status: Idea
+created: 2026-09-01
+---
+
+## Tasks
+`,
+
+			// A folder's main note with no frontmatter at all — the `!lull.app.md` case.
+			'Projects/Podcast/!Podcast.md': `### Part of: [[Ferret Media]]
+
+Episode ideas live here.
+`,
+
+			// Still carrying the retired flag from when a bucket was a property of a project.
+			'Projects/Side Quests.md': `---
+categories:
+  - "[[Projects]]"
+bucket: true
+status: In Progress
+created: 2026-07-01
+---
 `,
 
 			'Templates/Bases/Tasks.base': 'filters:\n  and:\n    - categories.contains(link("Tasks"))\n'

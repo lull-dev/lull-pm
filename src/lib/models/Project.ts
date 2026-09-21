@@ -1,3 +1,5 @@
+import type { Parent, ParentViolation } from './Parent';
+
 /**
  * A project is a note in `Projects/`.
  *
@@ -5,7 +7,7 @@
  * `.base` filters match against whatever string is there ("In Progress", "Idea", "On Hold" all show
  * up). `PROJECT_STATUSES` is offered as quick picks in the UI, not enforced on read.
  */
-export const PROJECT_STATUSES = ['Idea', 'In Progress', 'On Hold', 'Done'] as const;
+export { DEFAULT_STATUSES as PROJECT_STATUSES } from './ProjectType';
 
 export interface Project {
 	/** Vault-relative path. This is the project's identity. */
@@ -14,11 +16,18 @@ export interface Project {
 	name: string;
 	/** Freeform — see the module comment. Empty string means unset. */
 	status: string;
+	/**
+	 * Which pipeline this project is on — the `type:` property, copied from the template it was
+	 * created from. Empty string means the default type. See `models/ProjectType.ts`.
+	 */
+	type: string;
+	/**
+	 * What this project is connected to: a company **or** a bucket, never both.
+	 * See `models/Parent.ts`.
+	 */
+	parent: Parent | null;
+	/** Set when the note's links break the one-parent rule, so the UI can offer to fix it. */
+	parentViolation: ParentViolation | null;
 	/** `YYYY-MM-DD`, or null when unset. */
 	created: string | null;
-	/**
-	 * A bucket is a project with `bucket: true` — same note type, shown on a different page. There is
-	 * no separate Bucket note; this flag is the only thing that distinguishes the two.
-	 */
-	bucket: boolean;
 }

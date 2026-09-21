@@ -10,22 +10,37 @@
 		AlertDialogHeader,
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
-	import { PROJECT_STATUSES } from '$lib/models/Project';
+	import { projectTypeState } from '$lib/managers/ProjectTypeManager.svelte';
+	import { typeFor } from '$lib/models/ProjectType';
 
 	interface Props {
 		open: boolean;
-		/** A bucket is a project with `bucket: true` — this just sets the flag at creation time. */
-		kind?: 'project' | 'bucket';
 		onCreated: (path: string) => void;
 		onClose: () => void;
 	}
 
-	let { open = $bindable(), kind = 'project', onCreated, onClose }: Props = $props();
+	let { open = $bindable(), onCreated, onClose }: Props = $props();
 
 	let name = $state('');
 	let status = $state('');
+	let typeName = $state('');
 	let saving = $state(false);
 	let error = $state<string | null>(null);
+
+	const selected = $derived(typeFor(typeName, projectTypeState.types));
+	const statuses = $derived(selected.statuses);
+
+	/**
+	 * Picking a type picks the template, and with it the folder Templater maps to that template —
+	 * so a note lull-pm creates lands exactly where a note created in Obsidian would have.
+	 */
+	const template = $derived(projectTypeState.types.find((t) => t.name === typeName)?.template);
+	const folder = $derived(projectTypeState.types.find((t) => t.name === typeName)?.folders[0]);
+
+	// A type change should not leave a status from the previous pipeline selected.
+	$effect(() => {
+		if (status !== '' && !statuses.includes(status)) status = '';
+	});
 
 	async function submit(event: Event) {
 		event.preventDefault();
@@ -36,10 +51,12 @@
 		try {
 			const project = await projectManager.createProject(name.trim(), {
 				status: status || undefined,
-				bucket: kind === 'bucket'
+				template,
+				folder: folder || undefined
 			});
 			name = '';
 			status = '';
+			typeName = '';
 			onCreated(project.path);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -53,22 +70,38 @@
 	<AlertDialogContent>
 		<form onsubmit={submit}>
 			<AlertDialogHeader>
-				<AlertDialogTitle>{kind === 'bucket' ? 'New bucket' : 'New project'}</AlertDialogTitle>
+				<AlertDialogTitle>New project</AlertDialogTitle>
 				<AlertDialogDescription>
-					Creates a note in <code class="font-mono">Projects/</code>, from your vault's Project
-					Template when it has one.
-					{#if kind === 'bucket'}
-						Buckets are projects too — just flagged with <code class="font-mono">bucket: true</code> so
-						they show up here instead of on the Projects page.
+					Creates a note in <code class="font-mono">{folder || 'Projects'}/</code>
+					{#if template}
+						from <code class="font-mono">{template}</code>
+					{:else}
+						from your vault's Project Template when it has one
 					{/if}
+					— the same template Templater would use for a note created there.
 				</AlertDialogDescription>
 			</AlertDialogHeader>
 
 			<div class="my-4 flex flex-col gap-4">
 				<Input bind:value={name} placeholder="lull.app" autofocus />
 
-				<div class="flex gap-2">
-					{#each ['', ...PROJECT_STATUSES] as option (option)}
+				{#if projectTypeState.types.length > 1}
+					<div class="flex flex-wrap gap-2">
+						{#each projectTypeState.types as option (option.template)}
+							<button
+								type="button"
+								onclick={() => (typeName = option.name)}
+								class="rounded-md border px-3 py-1.5 text-xs transition
+									{typeName === option.name ? 'border-primary bg-accent' : 'border-border hover:bg-accent/50'}"
+							>
+								{option.name || 'Default'}
+							</button>
+						{/each}
+					</div>
+				{/if}
+
+				<div class="flex flex-wrap gap-2">
+					{#each ['', ...statuses] as option (option)}
 						<button
 							type="button"
 							onclick={() => (status = option)}
@@ -87,9 +120,7 @@
 
 			<AlertDialogFooter>
 				<Button type="button" variant="ghost" onclick={onClose}>Cancel</Button>
-				<Button type="submit" disabled={saving || name.trim() === ''}>
-					{kind === 'bucket' ? 'Create bucket' : 'Create project'}
-				</Button>
+				<Button type="submit" disabled={saving || name.trim() === ''}>Create project</Button>
 			</AlertDialogFooter>
 		</form>
 	</AlertDialogContent>

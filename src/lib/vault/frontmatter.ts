@@ -214,6 +214,27 @@ export function getStringList(note: ParsedNote, key: string): string[] {
 	return single === undefined || single === '' ? [] : [single];
 }
 
+/**
+ * A property read as one value, whether the note writes it as a scalar or as a list.
+ *
+ * `status` is why this exists. The vault writes `status: In Progress` on tasks and
+ * `status:\n  - Idea` on projects, and `Projects.base` filters with `status.contains(...)`
+ * precisely because both shapes are in play. A caller wants the status; the YAML shape is the
+ * note's business, not theirs.
+ *
+ * Reading the first item of a list rather than refusing a multi-value list is deliberate: no note
+ * in the vault carries two statuses, and if one ever does, showing the first beats showing nothing.
+ */
+export function getScalar(note: ParsedNote, key: string): string | undefined {
+	return getString(note, key) ?? getStringList(note, key)[0];
+}
+
+/** True when the note writes this property as a block sequence rather than a plain scalar. */
+export function isListValued(note: ParsedNote, key: string): boolean {
+	const pair = pairFor(note, key);
+	return pair !== undefined && isSeq(pair.value);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Writing                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -400,6 +421,23 @@ function insertAtEnd(lines: string[], entry: string[]): string[] {
 	let at = lines.length;
 	while (at > 0 && lines[at - 1].trim() === '') at--;
 	return [...lines.slice(0, at), ...entry, ...lines.slice(at)];
+}
+
+/**
+ * Set a single-valued property, keeping whichever YAML shape the note already uses.
+ *
+ * `setFrontmatterValue(raw, 'status', 'Done')` on a project whose status is a list would rewrite
+ * `status:\n  - Idea` as `status: Done`, converting the shape. That is exactly the "tidying" this
+ * module exists to refuse: `Projects.base` filters with `status.contains(...)`, and the note's own
+ * shape is not lull-pm's to normalise. So a list stays a list of one, and a scalar stays a scalar.
+ *
+ * Clearing to `null` writes the empty `key:` form, which reads the same either way.
+ */
+export function setScalarValue(raw: string, key: string, value: string | null): string {
+	if (value !== null && isListValued(parseNote(raw), key)) {
+		return setFrontmatterValue(raw, key, [value]);
+	}
+	return setFrontmatterValue(raw, key, value);
 }
 
 /** Apply several property edits in one pass. Order is preserved; each edit re-reads the text. */

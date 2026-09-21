@@ -6,7 +6,9 @@
 import { SvelteSet } from 'svelte/reactivity';
 import type { CreateProjectOptions } from '$lib/services/vault/ProjectService';
 import { ProjectService } from '$lib/services/vault/ProjectService';
+import type { Parent } from '$lib/models/Parent';
 import type { Project } from '$lib/models/Project';
+import { indexManager } from './IndexManager.svelte';
 import { vaultState } from './VaultManager.svelte';
 
 export const projectState = $state({
@@ -60,7 +62,7 @@ export const projectManager = {
 		projectState.error = null;
 		try {
 			const service = await requireService();
-			projectState.projects = await service.listProjects();
+			projectState.projects = service.listProjects(await indexManager.ensure());
 		} catch (error) {
 			projectState.error = message(error);
 		} finally {
@@ -73,6 +75,8 @@ export const projectManager = {
 		try {
 			const service = await requireService();
 			const project = await service.createProject(name, options);
+			// A new note changes what the index holds, so the next read must rebuild it.
+			indexManager.invalidate();
 			patch(project);
 			return project;
 		} catch (error) {
@@ -85,14 +89,16 @@ export const projectManager = {
 		return mutate(path, (service) => service.setStatus(path, status));
 	},
 
-	setBucket(path: string, bucket: boolean): Promise<void> {
-		return mutate(path, (service) => service.setBucket(path, bucket));
+	/** Connect the project to a company or a bucket — never both. */
+	setParent(path: string, parent: Parent | null): Promise<void> {
+		return mutate(path, (service) => service.setParent(path, parent));
 	},
 
 	async refreshQuietly(): Promise<void> {
 		try {
+			indexManager.invalidate();
 			const service = await requireService();
-			projectState.projects = await service.listProjects();
+			projectState.projects = service.listProjects(await indexManager.ensure());
 		} catch {
 			// A refresh that fails is not worth interrupting the user over; the next one will do.
 		}
