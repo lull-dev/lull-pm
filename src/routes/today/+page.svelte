@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
+	import { bucketManager, bucketState } from '$lib/managers/BucketManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import TaskCard from '$lib/components/tasks/TaskCard.svelte';
 	import TaskDetailSheet from '$lib/components/tasks/TaskDetailSheet.svelte';
@@ -8,7 +9,6 @@
 	import { Spinner } from '$lib/components/ui/spinner';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { priorityRank, type Task } from '$lib/models/Task';
-	import { bucketsFrom } from '$lib/models/Bucket';
 	import { normalizeToMidnight, formatLocalDateYMD } from '$lib/utils/DateHelper';
 
 	let detailOpen = $state(false);
@@ -25,6 +25,9 @@
 			!projectState.isLoading
 		) {
 			void projectManager.load();
+		}
+		if (vaultState.status === 'ready' && bucketState.buckets.length === 0 && !bucketState.isLoading) {
+			void bucketManager.load();
 		}
 	});
 
@@ -43,11 +46,24 @@
 		};
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks));
+	const buckets = $derived(bucketState.buckets);
+	// A task is in a bucket when its *parent* is that bucket — `org:` is the company, not a bucket.
+	const bucketCounts = $derived(
+		Object.fromEntries(
+			buckets.map((bucket) => [
+				bucket.name,
+				taskState.tasks.filter(
+					(task) => task.parent?.kind === 'bucket' && task.parent.name === bucket.name
+				).length
+			])
+		)
+	);
 	const scoped = $derived(
 		selectedBucket === null
 			? taskState.tasks
-			: taskState.tasks.filter((task) => task.org.includes(selectedBucket!))
+			: taskState.tasks.filter(
+					(task) => task.parent?.kind === 'bucket' && task.parent.name === selectedBucket
+				)
 	);
 
 	function sortByPriority(list: Task[]): Task[] {
@@ -103,7 +119,7 @@
 	</header>
 
 	<div class="pb-6">
-		<BucketFilter {buckets} bind:selected={selectedBucket} />
+		<BucketFilter {buckets} counts={bucketCounts} bind:selected={selectedBucket} />
 	</div>
 
 	{#if taskState.error}

@@ -36,6 +36,88 @@ export async function readAppSettings(adapter: VaultAdapter): Promise<ObsidianAp
 }
 
 /* -------------------------------------------------------------------------- */
+/* Templater                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Templater already knows which template a new note in a given folder should use.
+ *
+ * The vault has `enable_folder_templates: true` and a `folder_templates` list mapping
+ * `Projects → Templates/Project Template.md`, `Companies/.../Videos → Templates/Youtube Video
+ * Template.md`, and so on. That mapping *is* the project-type system, written in the plugin the
+ * user already configures templates with — so lull-pm reads it rather than keeping a second,
+ * divergent list of its own.
+ *
+ * Read-only, like `.obsidian/app.json`. Templater's settings are Templater's.
+ */
+export const TEMPLATER_CONFIG_PATH = '.obsidian/plugins/templater-obsidian/data.json';
+
+export interface FolderTemplate {
+	/** Vault-relative folder. Templater writes the vault root as `/`; normalised to `''` here. */
+	folder: string;
+	/** Vault-relative path to the template note. */
+	template: string;
+}
+
+export interface TemplaterSettings {
+	/** Where templates live, e.g. `Templates`. Null when Templater is not installed. */
+	templatesFolder: string | null;
+	enableFolderTemplates: boolean;
+	folderTemplates: FolderTemplate[];
+}
+
+interface RawTemplater {
+	templates_folder?: string;
+	enable_folder_templates?: boolean;
+	folder_templates?: { folder?: string; template?: string }[];
+}
+
+export async function readTemplaterSettings(adapter: VaultAdapter): Promise<TemplaterSettings> {
+	const raw = await readJson<RawTemplater>(adapter, TEMPLATER_CONFIG_PATH);
+
+	return {
+		templatesFolder: raw?.templates_folder?.trim() || null,
+		enableFolderTemplates: raw?.enable_folder_templates ?? false,
+		folderTemplates: (raw?.folder_templates ?? [])
+			// Templater keeps an empty pair in its list when the user has never added one.
+			.filter((entry) => (entry.template ?? '').trim() !== '')
+			.map((entry) => ({
+				folder: normaliseFolder(entry.folder ?? ''),
+				template: entry.template!.trim()
+			}))
+	};
+}
+
+/**
+ * The template Templater would apply to a note created in `folder`, or null for none.
+ *
+ * Matches Templater's own resolution: the most specific folder that is an ancestor of (or equal to)
+ * the destination wins, with `/` as the catch-all. Returns null when folder templates are switched
+ * off, so lull-pm honours that setting rather than quietly using the list anyway.
+ */
+export function templateForFolder(settings: TemplaterSettings, folder: string): string | null {
+	if (!settings.enableFolderTemplates) return null;
+
+	const target = normaliseFolder(folder);
+	let best: FolderTemplate | null = null;
+
+	for (const entry of settings.folderTemplates) {
+		const matches =
+			entry.folder === '' || target === entry.folder || target.startsWith(`${entry.folder}/`);
+		if (!matches) continue;
+		if (!best || entry.folder.length > best.folder.length) best = entry;
+	}
+
+	return best?.template ?? null;
+}
+
+function normaliseFolder(folder: string): string {
+	const trimmed = folder.trim();
+	if (trimmed === '/' || trimmed === '') return '';
+	return trimmed.replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+/* -------------------------------------------------------------------------- */
 /* lull-pm's own config                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -44,7 +126,10 @@ export interface LullPmConfig {
 	folders: {
 		tasks: string;
 		projects: string;
+		companies: string;
 		goals: string;
+		buckets: string;
+		/** Where Obsidian drops a new note. Not a typed folder — see `AuditManager`. */
 		inbox: string;
 	};
 }
@@ -53,7 +138,9 @@ export const DEFAULT_CONFIG: LullPmConfig = {
 	folders: {
 		tasks: 'Tasks',
 		projects: 'Projects',
+		companies: 'Companies',
 		goals: 'Goals',
+		buckets: 'Categories/Buckets',
 		inbox: '_Inbox Notes'
 	}
 };

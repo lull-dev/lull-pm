@@ -12,7 +12,9 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import { PROJECT_STATUSES } from '$lib/models/Project';
+	import ParentPicker from '$lib/components/parents/ParentPicker.svelte';
+	import { projectTypeState } from '$lib/managers/ProjectTypeManager.svelte';
+	import { statusesFor, typeFor } from '$lib/models/ProjectType';
 
 	interface Props {
 		open: boolean;
@@ -25,11 +27,15 @@
 		path ? (projectState.projects.find((p) => p.path === path) ?? null) : null
 	);
 
-	// A bucket links to tasks via `org`; a plain project links via `projects`.
+	// The pipeline this project moves through, from the template its `type:` names.
+	const type = $derived(typeFor(project?.type ?? '', projectTypeState.types));
+	const statuses = $derived(statusesFor(project?.status ?? '', type));
+
+	// A task belongs to this project when this project is its parent.
 	const linkedTasks = $derived(
 		project
-			? taskState.tasks.filter((task) =>
-					project.bucket ? task.org.includes(project.name) : task.projects.includes(project.name)
+			? taskState.tasks.filter(
+					(task) => task.parent?.kind === 'project' && task.parent.name === project.name
 				)
 			: []
 	);
@@ -40,7 +46,12 @@
 		{#if project}
 			{@const currentPath = project.path}
 			<SheetHeader class="border-b">
-				<SheetTitle>{project.name}</SheetTitle>
+				<SheetTitle class="flex items-center gap-2">
+					{project.name}
+					{#if project.type}
+						<Badge variant="outline">{project.type}</Badge>
+					{/if}
+				</SheetTitle>
 				<SheetDescription>
 					<button
 						type="button"
@@ -67,25 +78,27 @@
 							{project.status || 'No status'}
 						</SelectTrigger>
 						<SelectContent>
-							{#each PROJECT_STATUSES as status (status)}
+							{#each statuses as status (status)}
 								<SelectItem value={status} label={status}>{status}</SelectItem>
 							{/each}
 						</SelectContent>
 					</Select>
 				</div>
 
-				<label class="flex items-center gap-2 text-sm">
-					<input
-						type="checkbox"
-						checked={project.bucket}
-						onchange={(e) =>
-							projectManager.setBucket(currentPath, (e.currentTarget as HTMLInputElement).checked)}
+				<div>
+					<span class="mb-1 block text-xs text-muted-foreground">Connected to</span>
+					<ParentPicker
+						type="project"
+						parent={project.parent}
+						placeholder="Search companies and buckets…"
+						onChange={(parent) => projectManager.setParent(currentPath, parent)}
 					/>
-					This is a bucket
-					<span class="text-xs text-muted-foreground">
-						— shows on the Buckets page instead of Projects
-					</span>
-				</label>
+					{#if project.parentViolation}
+						<p class="pt-1 text-xs text-destructive">
+							This note is connected to more than one thing. Picking one here will fix it.
+						</p>
+					{/if}
+				</div>
 
 				<div>
 					<h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -93,11 +106,7 @@
 					</h3>
 					{#if linkedTasks.length === 0}
 						<p class="text-xs text-muted-foreground">
-							{#if project.bucket}
-								No tasks link here yet — assign this bucket to a task's Bucket field.
-							{:else}
-								No tasks link here yet — add this project's name to a task's Projects field.
-							{/if}
+							No tasks link here yet — set this project as a task's parent.
 						</p>
 					{:else}
 						<div class="flex flex-col gap-1.5">

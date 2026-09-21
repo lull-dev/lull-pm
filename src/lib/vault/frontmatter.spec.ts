@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
 	getBoolean,
+	getScalar,
 	getString,
 	getStringList,
+	isListValued,
 	keys,
 	parseNote,
 	removeFrontmatterKey,
 	renameFrontmatterKey,
 	setFrontmatterValue,
-	setFrontmatterValues
+	setFrontmatterValues,
+	setScalarValue
 } from './frontmatter';
 
 /**
@@ -333,5 +336,88 @@ describe('removeFrontmatterKey', () => {
 		expect(next).not.toContain('Schneider Electric');
 		expect(getString(parseNote(next), 'priority')).toBe('High');
 		expect(getString(parseNote(next), 'created')).toBe('2026-08-14');
+	});
+});
+
+/**
+ * Real project note: `status` is a block sequence, not a scalar. `Projects.base` filters with
+ * `status.contains(...)` precisely because both shapes are in the vault.
+ */
+const PROJECT_NOTE = `---
+categories:
+  - "[[Projects]]"
+org:
+  - "[[Ferret Media]]"
+status:
+  - Idea
+---
+
+## Tasks
+`;
+
+describe('getScalar', () => {
+	it('reads a scalar property', () => {
+		expect(getScalar(parseNote(TASK_NOTE), 'status')).toBe('In Progress');
+	});
+
+	it('reads a list-valued property as its single value', () => {
+		expect(getScalar(parseNote(PROJECT_NOTE), 'status')).toBe('Idea');
+	});
+
+	it('is undefined for an empty property', () => {
+		expect(getScalar(parseNote(TASK_NOTE), 'due')).toBeUndefined();
+	});
+
+	it('is undefined for a missing key', () => {
+		expect(getScalar(parseNote(TASK_NOTE), 'bucket')).toBeUndefined();
+	});
+});
+
+describe('isListValued', () => {
+	it('distinguishes the two shapes of status in the vault', () => {
+		expect(isListValued(parseNote(PROJECT_NOTE), 'status')).toBe(true);
+		expect(isListValued(parseNote(TASK_NOTE), 'status')).toBe(false);
+	});
+
+	it('is false for a key the note does not have', () => {
+		expect(isListValued(parseNote(TASK_NOTE), 'bucket')).toBe(false);
+	});
+});
+
+describe('setScalarValue', () => {
+	it('keeps a list-valued property a list', () => {
+		const next = setScalarValue(PROJECT_NOTE, 'status', 'Done');
+		expect(next).toBe(PROJECT_NOTE.replace('  - Idea', '  - Done'));
+		expect(isListValued(parseNote(next), 'status')).toBe(true);
+	});
+
+	it('keeps a scalar property a scalar', () => {
+		const next = setScalarValue(TASK_NOTE, 'status', 'Done');
+		expect(next).toBe(TASK_NOTE.replace('status: In Progress', 'status: Done'));
+	});
+
+	it('changes nothing when the value already matches, whichever shape it is in', () => {
+		expect(setScalarValue(PROJECT_NOTE, 'status', 'Idea')).toBe(PROJECT_NOTE);
+		expect(setScalarValue(TASK_NOTE, 'status', 'In Progress')).toBe(TASK_NOTE);
+	});
+
+	it('clears to the empty form without inventing a shape', () => {
+		expect(setScalarValue(PROJECT_NOTE, 'status', null)).toBe(
+			PROJECT_NOTE.replace('status:\n  - Idea', 'status:')
+		);
+	});
+
+	it('appends a missing key as a scalar', () => {
+		const next = setScalarValue(TASK_NOTE, 'bucket', 'Personal');
+		expect(getScalar(parseNote(next), 'bucket')).toBe('Personal');
+		expect(isListValued(parseNote(next), 'bucket')).toBe(false);
+	});
+
+	it('leaves every other property and the body byte-for-byte', () => {
+		const next = setScalarValue(PROJECT_NOTE, 'status', 'Done');
+		expect(next.slice(next.indexOf('---', 4))).toBe(
+			PROJECT_NOTE.slice(PROJECT_NOTE.indexOf('---', 4))
+		);
+		expect(getStringList(parseNote(next), 'org')).toEqual(['[[Ferret Media]]']);
 	});
 });

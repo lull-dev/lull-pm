@@ -19,6 +19,15 @@
 		{#if project.status}
 			<Badge variant="outline">{project.status}</Badge>
 		{/if}
+		{#if project.type}
+			<Badge variant="secondary">{project.type}</Badge>
+		{/if}
+		{#if project.parent}
+			<span class="text-xs text-muted-foreground">
+				{project.parent.kind === 'company' ? '🏢' : '🪣'}
+				{project.parent.name}
+			</span>
+		{/if}
 		<span class="text-xs text-muted-foreground">
 			{taskCount}
 			{taskCount === 1 ? 'task' : 'tasks'}

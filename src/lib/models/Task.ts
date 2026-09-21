@@ -1,4 +1,5 @@
 import type { Checkbox } from '$lib/vault/checkbox';
+import type { Parent, ParentViolation } from './Parent';
 
 /**
  * A task is a note in `Tasks/`.
@@ -20,9 +21,22 @@ export interface Task {
 	name: string;
 	status: TaskStatus;
 	priority: TaskPriority;
-	/** Bucket(s) this task belongs to — the `org:` property, read as wikilink names. */
+	/**
+	 * What this task is connected to: a bucket **or** a project, never both.
+	 *
+	 * The authority on the task's placement. `org` and `projects` below are the raw keys it is
+	 * derived from, kept because the vault's `.base` views read them directly.
+	 */
+	parent: Parent | null;
+	/** Set when the note's links break the one-parent rule, so the UI can offer to fix it. */
+	parentViolation: ParentViolation | null;
+	/**
+	 * The `org:` property, read as wikilink names — the **company**, which is what this key has
+	 * always held in the vault (`[[Schneider Electric]]`, `[[Ferret Media]]`). It is not a task's
+	 * parent: a task's company follows from its project. lull-pm reads it and leaves it alone.
+	 */
 	org: string[];
-	/** Project(s) this task belongs to, as wikilink names. */
+	/** Project(s) this task belongs to, as wikilink names. The raw form of a `project` parent. */
 	projects: string[];
 	/** The deadline, `YYYY-MM-DD`, or null when unset. */
 	due: string | null;

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
+	import { projectTypeManager, projectTypeState } from '$lib/managers/ProjectTypeManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import ProjectCard from './components/ProjectCard.svelte';
 	import NewProjectDialog from './components/NewProjectDialog.svelte';
@@ -23,6 +24,9 @@
 		) {
 			void projectManager.load();
 		}
+		if (vaultState.status === 'ready' && projectTypeState.types.length === 0) {
+			void projectTypeManager.load();
+		}
 		if (vaultState.status === 'ready' && taskState.tasks.length === 0 && !taskState.isLoading) {
 			void taskManager.load();
 		}
@@ -44,10 +48,12 @@
 	});
 
 	// Buckets are projects too (bucket: true) — they live on their own page, not here.
-	const visibleProjects = $derived(projectState.projects.filter((project) => !project.bucket));
+	const visibleProjects = $derived(projectState.projects);
 
 	function taskCountFor(project: Project): number {
-		return taskState.tasks.filter((task) => task.projects.includes(project.name)).length;
+		return taskState.tasks.filter(
+			(task) => task.parent?.kind === 'project' && task.parent.name === project.name
+		).length;
 	}
 
 	function openProject(project: Project) {

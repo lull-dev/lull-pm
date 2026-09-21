@@ -3,17 +3,15 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import SearchableSelect from '$lib/components/universals/SearchableSelect.svelte';
+	import ParentPicker from '$lib/components/parents/ParentPicker.svelte';
 	import type { Task } from '$lib/models/Task';
 
 	interface Props {
 		task: Task;
-		bucketOptions: string[];
-		projectOptions: string[];
 		onopen: () => void;
 	}
 
-	let { task, bucketOptions, projectOptions, onopen }: Props = $props();
+	let { task, onopen }: Props = $props();
 </script>
 
 <div class="rounded-lg border p-3">
@@ -75,26 +73,15 @@
 					taskManager.setDue(task.path, (e.currentTarget as HTMLInputElement).value || null)}
 			/>
 		</div>
-		<div>
+		<div class="col-span-2">
 			<span class="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">
-				Bucket
+				Connected to
 			</span>
-			<SearchableSelect
-				value={task.org[0]}
-				options={bucketOptions}
-				placeholder="Search buckets…"
-				onValueChange={(value) => taskManager.setOrg(task.path, [value])}
-			/>
-		</div>
-		<div>
-			<span class="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">
-				Project
-			</span>
-			<SearchableSelect
-				value={task.projects[0]}
-				options={projectOptions}
-				placeholder="Search projects…"
-				onValueChange={(value) => taskManager.setProjects(task.path, [value])}
+			<ParentPicker
+				type="task"
+				parent={task.parent}
+				placeholder="Search projects and buckets…"
+				onChange={(parent) => taskManager.setParent(task.path, parent)}
 			/>
 		</div>
 	</div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
-	import { projectState } from '$lib/managers/ProjectManager.svelte';
+	import ParentPicker from '$lib/components/parents/ParentPicker.svelte';
 	import { vaultManager } from '$lib/managers/VaultManager.svelte';
 	import {
 		Sheet,
@@ -12,7 +12,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
-	import SearchableSelect from '$lib/components/universals/SearchableSelect.svelte';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import {
 		TASK_PRIORITIES,
@@ -30,11 +29,6 @@
 
 	const task = $derived(path ? (taskState.tasks.find((t) => t.path === path) ?? null) : null);
 
-	// A bucket is a project note flagged bucket: true — the controlled vocabulary org is assigned from.
-	const bucketOptions = $derived(
-		projectState.projects.filter((project) => project.bucket).map((project) => project.name)
-	);
-
 	let newStep = $state('');
 
 	function addStep(event: Event) {
@@ -42,15 +36,6 @@
 		if (!path || newStep.trim() === '') return;
 		void taskManager.addStep(path, newStep.trim());
 		newStep = '';
-	}
-
-	function commitList(current: string[], next: string, apply: (values: string[]) => void) {
-		const values = next
-			.split(',')
-			.map((v) => v.trim())
-			.filter((v) => v !== '');
-		if (values.join(',') === current.join(',')) return;
-		apply(values);
 	}
 </script>
 
@@ -142,30 +127,24 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<span class="mb-1 block text-xs text-muted-foreground">Bucket</span>
-						<SearchableSelect
-							value={task.org[0]}
-							options={bucketOptions}
-							placeholder="Search buckets…"
-							onValueChange={(value) => taskManager.setOrg(currentPath, [value])}
-						/>
-					</div>
-					<div>
-						<label class="mb-1 block text-xs text-muted-foreground" for="task-projects">
-							Projects
-						</label>
-						<Input
-							id="task-projects"
-							value={task.projects.join(', ')}
-							placeholder="lull.app"
-							onblur={(e) =>
-								commitList(task.projects, (e.currentTarget as HTMLInputElement).value, (values) =>
-									taskManager.setProjects(currentPath, values)
-								)}
-						/>
-					</div>
+				<div>
+					<span class="mb-1 block text-xs text-muted-foreground">Connected to</span>
+					<ParentPicker
+						type="task"
+						parent={task.parent}
+						placeholder="Search projects and buckets…"
+						onChange={(parent) => taskManager.setParent(currentPath, parent)}
+					/>
+					{#if task.parentViolation}
+						<p class="pt-1 text-xs text-destructive">
+							This note is connected to more than one thing. Picking one here will fix it.
+						</p>
+					{:else if task.org.length > 0}
+						<p class="pt-1 text-xs text-muted-foreground">
+							Company: {task.org.join(', ')} — from <code class="font-mono">org:</code>, which
+							lull-pm reads but never changes.
+						</p>
+					{/if}
 				</div>
 
 				<div>

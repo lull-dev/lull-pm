@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
+	import { bucketManager, bucketState } from '$lib/managers/BucketManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import InboxRow from './components/InboxRow.svelte';
 	import NewTaskDialog from '$lib/components/tasks/NewTaskDialog.svelte';
@@ -24,6 +25,13 @@
 			!projectState.isLoading
 		) {
 			void projectManager.load();
+		}
+		if (
+			vaultState.status === 'ready' &&
+			bucketState.buckets.length === 0 &&
+			!bucketState.isLoading
+		) {
+			void bucketManager.load();
 		}
 	});
 
@@ -51,10 +59,6 @@
 
 	// A bucket is a project note flagged bucket: true — this is the controlled vocabulary a task's
 	// org field is assigned from, not just whatever values happen to already be in use.
-	const bucketOptions = $derived(
-		projectState.projects.filter((project) => project.bucket).map((project) => project.name)
-	);
-	const projectOptions = $derived(projectState.projects.map((project) => project.name));
 
 	function openTask(path: string) {
 		selectedPath = path;
@@ -102,7 +106,7 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each inboxTasks as task (task.path)}
-				<InboxRow {task} {bucketOptions} {projectOptions} onopen={() => openTask(task.path)} />
+				<InboxRow {task} onopen={() => openTask(task.path)} />
 			{/each}
 		</div>
 	{/if}

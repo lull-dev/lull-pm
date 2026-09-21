@@ -7,14 +7,7 @@
  * value captured outside the callback — otherwise a retry would act on stale offsets.
  */
 
-import {
-	createNote,
-	editNote,
-	joinPath,
-	noteName,
-	type VaultAdapter,
-	type VaultFile
-} from '$lib/vault/adapter';
+import { createNote, editNote, joinPath, noteName, type VaultAdapter } from '$lib/vault/adapter';
 import {
 	appendCheckbox,
 	findCheckboxes,
@@ -22,17 +15,21 @@ import {
 	type Checkbox
 } from '$lib/vault/checkbox';
 import {
+	getScalar,
 	getString,
 	getStringList,
 	parseNote,
 	setFrontmatterValue,
 	setFrontmatterValues,
-	type FrontmatterValue
+	type FrontmatterValue,
+	type ParsedNote
 } from '$lib/vault/frontmatter';
+import type { VaultIndex } from '$lib/vault/notes';
 import { appendSection, findSection, replaceSectionContent } from '$lib/vault/section';
 import { applyTemplate, formatDate } from '$lib/vault/templater';
 import { asWikilink, formatWikilink } from '$lib/vault/wikilink';
 import { readLullConfig } from '$lib/vault/settings';
+import { parentViolation, readParent, setParent, type Parent } from '$lib/models/Parent';
 import {
 	TASK_PRIORITIES,
 	TASK_STATUSES,
@@ -41,8 +38,13 @@ import {
 	type TaskStatus
 } from '$lib/models/Task';
 
+/** The category a task note claims. */
+export const TASK_CATEGORY = 'Tasks';
+
 export interface CreateTaskOptions {
 	priority?: TaskPriority;
+	/** What the task is connected to: a bucket or a project. Takes precedence over `projects`. */
+	parent?: Parent | null;
 	org?: string[];
 	projects?: string[];
 	due?: string;
@@ -65,25 +67,22 @@ export class TaskService {
 	/* Reading                                                                  */
 	/* ---------------------------------------------------------------------- */
 
-	async listTasks(): Promise<Task[]> {
-		let files: VaultFile[];
-		try {
-			files = await this.adapter.list(this.folder, { recursive: true });
-		} catch {
-			return [];
-		}
-
-		const tasks = await Promise.all(
-			files
-				.filter((file) => !file.name.toLowerCase().includes('template'))
-				.map((file) => this.readTask(file.path))
-		);
-		return tasks.sort((a, b) => a.name.localeCompare(b.name));
+	/**
+	 * Every task in the vault, alphabetical.
+	 *
+	 * Found by `categories: [[Tasks]]`, the same filter `Tasks.base` opens with. Synchronous: the
+	 * index already holds each note parsed.
+	 */
+	listTasks(index: VaultIndex): Task[] {
+		return index
+			.byCategory(TASK_CATEGORY)
+			.map((note) => toTask(note.path, note.note, note.title))
+			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
 	async readTask(path: string): Promise<Task> {
 		const raw = await this.adapter.read(path);
-		return toTask(path, raw);
+		return toTask(path, parseNote(raw), undefined, raw);
 	}
 
 	/* ---------------------------------------------------------------------- */
@@ -108,6 +107,9 @@ export class TaskService {
 		if (options.due) edits.due = options.due;
 		if (options.doDate) edits.do = options.doDate;
 		if (Object.keys(edits).length > 0) content = setFrontmatterValues(content, edits);
+		// Applied last so it has the final say: a parent is the one-of-two rule, and it must win
+		// over anything `projects` above may have written.
+		if (options.parent !== undefined) content = setParent(content, 'task', options.parent);
 
 		await createNote(this.adapter, path, content);
 		return this.readTask(path);
@@ -156,6 +158,18 @@ export class TaskService {
 
 	async setDoDate(path: string, doDate: string | null): Promise<Task> {
 		await editNote(this.adapter, path, (raw) => setFrontmatterValue(raw, 'do', doDate));
+		return this.readTask(path);
+	}
+
+	/**
+	 * Connect the task to a bucket or a project — never both, and never two.
+	 *
+	 * One `editNote` call around one `setParent`, so the rule holds for every version of the file
+	 * that ever exists on disk. Re-derives nothing from outside the callback, as `editNote`'s retry
+	 * contract requires.
+	 */
+	async setParent(path: string, parent: Parent | null): Promise<Task> {
+		await editNote(this.adapter, path, (raw) => setParent(raw, 'task', parent));
 		return this.readTask(path);
 	}
 
@@ -235,17 +249,19 @@ export class TaskService {
 /* Parsing                                                                     */
 /* -------------------------------------------------------------------------- */
 
-function toTask(path: string, raw: string): Task {
-	const note = parseNote(raw);
-
-	const status = asStatus(getString(note, 'status'));
+function toTask(path: string, note: ParsedNote, title?: string, text?: string): Task {
+	// The parsed note keeps the whole original text, so body sections need nothing extra.
+	const raw = text ?? note.raw;
+	const status = asStatus(getScalar(note, 'status'));
 	const priority = asPriority(getString(note, 'priority'));
 
 	return {
 		path,
-		name: noteName(path),
+		name: title ?? noteName(path).replace(/^!/, ''),
 		status,
 		priority,
+		parent: readParent(note, 'task'),
+		parentViolation: parentViolation(note, 'task'),
 		org: getStringList(note, 'org').map((value) => asWikilink(value).name),
 		projects: getStringList(note, 'projects').map((value) => asWikilink(value).name),
 		due: getString(note, 'due') ?? null,

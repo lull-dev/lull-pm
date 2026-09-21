@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { taskManager, taskState } from '$lib/managers/TaskManager.svelte';
 	import { projectManager, projectState } from '$lib/managers/ProjectManager.svelte';
+	import { bucketManager, bucketState } from '$lib/managers/BucketManager.svelte';
 	import { vaultState } from '$lib/managers/VaultManager.svelte';
 	import TaskBoard from '$lib/components/tasks/TaskBoard.svelte';
 	import TaskCard from '$lib/components/tasks/TaskCard.svelte';
@@ -13,7 +14,6 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import type { Task } from '$lib/models/Task';
-	import { bucketsFrom } from '$lib/models/Bucket';
 
 	let newTaskOpen = $state(false);
 	let detailOpen = $state(false);
@@ -32,6 +32,9 @@
 		) {
 			void projectManager.load();
 		}
+		if (vaultState.status === 'ready' && bucketState.buckets.length === 0 && !bucketState.isLoading) {
+			void bucketManager.load();
+		}
 	});
 
 	// Follow the vault: an edit made in Obsidian should show up here without a manual refresh.
@@ -49,11 +52,24 @@
 		};
 	});
 
-	const buckets = $derived(bucketsFrom(taskState.tasks));
+	const buckets = $derived(bucketState.buckets);
+	// A task is in a bucket when its *parent* is that bucket — `org:` is the company, not a bucket.
+	const bucketCounts = $derived(
+		Object.fromEntries(
+			buckets.map((bucket) => [
+				bucket.name,
+				taskState.tasks.filter(
+					(task) => task.parent?.kind === 'bucket' && task.parent.name === bucket.name
+				).length
+			])
+		)
+	);
 	const visibleTasks = $derived(
 		selectedBucket === null
 			? taskState.tasks
-			: taskState.tasks.filter((task) => task.org.includes(selectedBucket!))
+			: taskState.tasks.filter(
+					(task) => task.parent?.kind === 'bucket' && task.parent.name === selectedBucket
+				)
 	);
 	const wheneverTasks = $derived(visibleTasks.filter((task) => task.status === 'Whenever'));
 
@@ -83,7 +99,7 @@
 				<TabsTrigger value="whenever">Whenever</TabsTrigger>
 			</TabsList>
 		</Tabs>
-		<BucketFilter {buckets} bind:selected={selectedBucket} />
+		<BucketFilter {buckets} counts={bucketCounts} bind:selected={selectedBucket} />
 	</div>
 
 	{#if taskState.error}
